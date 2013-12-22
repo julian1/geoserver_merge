@@ -8,6 +8,18 @@ require 'rexml/xpath'
 require 'find'
 
 
+require 'optparse'
+require 'yaml'
+
+
+dir = nil 
+OptionParser.new do |opts|
+  opts.banner = "Usage: example.rb [options]"
+  opts.on('-d', '--directory NAME', 'Directory name') { |v| dir = v }
+  #opts.on('-h', '--sourcehost HOST', 'Source host') { |v| options[:source_host] = v }
+end.parse!
+
+
 # A list of geoserver object identifiers 
 oids = {} 
 
@@ -15,7 +27,7 @@ oids = {}
 # scan the directory and organize files, and their xml structure 
 # in terms of their object identifiers 
 
-Find.find('./geoserver-config' ) do |path|
+Find.find( dir  ) do |path|
 
   # only take xml files
   next unless FileTest.file?(path)
