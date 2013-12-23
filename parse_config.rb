@@ -146,7 +146,7 @@ def format_object( object, depth)
     pad  += '  '
   end
 
-  print "#{pad} #{object[:path]}  "
+  print "#{pad} #{object[:path]} "
 
   node = object[:doc]
 
@@ -185,15 +185,11 @@ def format_object_one_line( object, depth)
   if REXML::XPath.first( node, "/layer" )
     puts ""
     format_object_node( node, ['name', 'type', 'enabled'])
-
   elsif REXML::XPath.first( node, "/featureType" )
     format_object_node( node, ['title', 'enabled'] ) 
-
   elsif REXML::XPath.first( node, "/namespace" )
     format_object_node( node, ['prefix'] ) 
-
   elsif REXML::XPath.first( node, "/dataStore" )
-
     format_object_node( node, ['name','type'] ) 
     print "{"
     g = []
