@@ -125,31 +125,32 @@ end
 
 
 def format_object_node( node, fields )
-
-  # should change the argument to be xml node rather than deoutput the doc
   print "{"
   g = []
   fields.each do |x|
-    g << "#{x}->#{REXML::XPath.first( node, "//#{x}" ).text}"
+    subnode = REXML::XPath.first( node, "//#{x}" )
+    if subnode
+      g << "#{x}->#{REXML::XPath.first( node, "//#{x}" ).text}"
+    else
+      g << "MISSING"
+    end
   end
   print g.join( ", ")
   print "}"
 end
 
 
-def format_object( object, depth)
+def format_object_tree( object, depth)
 
   # format some common object types for pretty printing
   # pad recursion depth
   pad = ''
   depth.times do 
-    pad  += '  '
+    pad += '  '
   end
 
   print "#{pad} #{object[:path]} "
-
   node = object[:doc]
-
   if REXML::XPath.first( node, "/layer" )
     format_object_node( node, ['name', 'type', 'enabled'] )
   elsif REXML::XPath.first( node, "/featureType" )
@@ -173,15 +174,11 @@ def format_object( object, depth)
 end
 
 
-
-
 def format_object_one_line( object, depth)
 
   # format some common object types for pretty printing
   # pad recursion depth
-
   node = object[:doc]
-
   if REXML::XPath.first( node, "/layer" )
     puts ""
     format_object_node( node, ['name', 'type', 'enabled'])
@@ -211,34 +208,58 @@ end
 ### want to perform into the recursion.
 
 
-dir = nil 
+require 'optparse'
+
+options = {}
+
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
-  opts.on('-d', '--directory NAME', 'Directory name') { |v| dir = v }
-  #opts.on('-h', '--sourcehost HOST', 'Source host') { |v| options[:source_host] = v }
+  opts.on('-d', '--directory NAME', 'Geoserver config directory to scan') { |v| options[:dir] = v }
+  opts.on('-l', '--layer NAME', 'dump specific layer name') { |v| options[:layer] = v }
+  opts.on("-v", "--[no-]verbose", "Dump paths recursively") { |v| options[:verbose] = v } 
 end.parse!
 
+if options[:layer]
 
+  puts "looking for layer '#{options[:layer]}'" 
 
+  trace_specific_layer( create_oid_mappings( options[:dir] ), options[:layer]) do |object, depth|
+    if options[:verbose]
+        format_object_tree( object, depth)
+    else
+        format_object_one_line( object, depth)
+    end
+  end
+else 
 
+  begin_trace_from_layer_info( create_oid_mappings( options[:dir] ) ) do |object, depth|
+    if options[:verbose]
+      format_object_tree( object, depth)
+    else
+      format_object_one_line( object, depth)
+    end
+  end
+end
+   
 
-# begin_trace_from_layer_info( create_oid_mappings( dir ) ) do |object, depth|
-# 
+# trace_specific_layer( create_oid_mappings( dir ), "argo_platform_metadata") do |object, depth|
+#  # format_object_one_line( object, depth)
 #   format_object( object, depth)
 # end
+# puts
 # 
-
-trace_specific_layer( create_oid_mappings( dir ), "argo_platform_metadata") do |object, depth|
- # format_object_one_line( object, depth)
-
-  format_object( object, depth)
-end
-puts
-
 
 abort('finished') 
 
 
+
+# dir = nil 
+# OptionParser.new do |opts|
+#   opts.banner = "Usage: example.rb [options]"
+#   opts.on('-d', '--directory NAME', 'Directory name') { |v| dir = v }
+#   #opts.on('-h', '--sourcehost HOST', 'Source host') { |v| options[:source_host] = v }
+# end.parse!
+# 
 
 
 
