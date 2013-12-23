@@ -104,20 +104,18 @@ def trace_oid( oids, oid, depth, options )
       # a dataStore with a reference to a shapefile 
       url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
       if url
-        puts "#{pad(depth+1)} +url #{url.text} "
+        print "#{pad(depth+1)} +url #{url.text} "
 
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
-          # x = url.text.scan( /file:(.*)/  ) 
-          puts "LOOKS LIKE A FILE #{x.first().first()} "
-
-
-          fullpath = "#{File.dirname( options[:dir])}/#{x.first().first() }"
-
-          
-          puts "fullpath #{fullpath} "
-
+          fullpath = "#{options[:dir]}/#{x.first().first() }"
+          if File.exists?( fullpath)
+              print " (OK)" 
+          else
+              abort( 'aborting')
+          end
         end
+        puts ""
 
       end
 
