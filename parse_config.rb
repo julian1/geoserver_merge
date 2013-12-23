@@ -170,18 +170,18 @@ def format_object( object, depth)
 end
 
 
-def format_object_element( object, fields )
+def format_object_element( node, fields )
 
-  # should change the argument to output the doc
-
+  # should change the argument to be xml node rather than deoutput the doc
   print "{"
   g = []
   fields.each do |x|
-    g << "#{x}->#{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+    g << "#{x}->#{REXML::XPath.first( node, "//#{x}" ).text}"
   end
   print g.join( ", ")
   print "}"
 end
+
 
 def format_object_one_line( object, depth)
 
@@ -190,21 +190,18 @@ def format_object_one_line( object, depth)
 
   if REXML::XPath.first( object[:doc], "/layer" )
     puts ""
-    format_object_element( object, ['name', 'type', 'enabled'])
+    format_object_element( object[:doc], ['name', 'type', 'enabled'])
 
   elsif REXML::XPath.first( object[:doc], "/featureType" )
-    format_object_element( object, ['title', 'enabled'] ) 
+    format_object_element( object[:doc], ['title', 'enabled'] ) 
 
   elsif REXML::XPath.first( object[:doc], "/namespace" )
-    format_object_element( object, ['prefix'] ) 
+    format_object_element( object[:doc], ['prefix'] ) 
 
   elsif REXML::XPath.first( object[:doc], "/dataStore" )
 
- #   format_object_element( object, ['name','type'] ) 
+    format_object_element( object[:doc], ['name','type'] ) 
     print "{"
-    ['name','type'].each do |x|
-      print ", #{x}->#{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-    end
 
     REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
 
