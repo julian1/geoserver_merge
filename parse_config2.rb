@@ -176,19 +176,8 @@ def trace_oid( oids, oid, depth, options )
         puts ""
       end
 
-#       if url
-#         puts "#{pad(depth+1)} +url #{url.text} "
-# 
-#         # we want to check the url
-#         
-# 
-#       end
-# 
-
-
     else 
-
-        puts "#{pad(depth+1)} +UNKNOWN #{path}"
+        puts "#{pad(depth+1)} +UNKNOWN element #{path}"
         abort( 'aborting' )
     end
 
