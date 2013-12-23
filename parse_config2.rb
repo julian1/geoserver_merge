@@ -1,4 +1,13 @@
 
+### ok, another parse config - that is not agnostic as to the type of object that
+### it's looking at. 
+### this will enable targetted operations, such as merging in different workspace urls 
+### etc.
+### also possible to trace file urls
+### and slds 
+### and perform everything needed to copy everything.
+
+
 # Script to trace out the references of a geoserver configuration directory 
 # and output useful configuration data
 
@@ -55,13 +64,6 @@ end
 ## we may want to keep a hash through the recursion to keep track of
 ## whether we've already looked at a node.
 
-def get_pad( depth )
-  # format some common object types for pretty printing
-  # pad recursion depth
-  pad = ''
-  depth.times { pad  += '  ' } 
-  pad
-end
 
 def trace_oid( oids, oid, depth, &block )
 
@@ -79,23 +81,19 @@ def trace_oid( oids, oid, depth, &block )
       trace_oid( oids, e.text , depth + 1, &block )
     end
 
-    # if it's a style with a ref to a stylefile 
+
+    # if there's a url then trace that dependency ..
+
+    # if there's a gwc
+
+    # etc. 
+
+        
     style_file = REXML::XPath.first( object[:doc], "/style/filename" )
     if style_file
-      fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
-      if File.exists?( fullpath)
-          puts "#{get_pad(depth + 1)} STYLEFILE #{fullpath}" 
-      else
-          puts "**MISSING**"
-      end
-    end
+      puts "** got style file!" 
 
-    # a dataStore with a reference to a shapefile 
-    url = REXML::XPath.first( object[:doc], "/dataStore/connectionParameters/entry[@key='url']" )
-    if url
-      puts "**** WHOOT a datastore with a url #{url.text} "
     end
-
 
   end
 end
@@ -107,7 +105,7 @@ end
 
 def begin_trace_from_layer_info( oids, &block )
 
-  # start tracing from the layer root keys
+	# start tracing from the layer root keys
 	oids.keys.each() do |oid|
 	  next unless ( oid =~ /LayerInfoImpl.*/ )
 	  trace_oid( oids, oid, 0, &block)
