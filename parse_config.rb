@@ -146,54 +146,30 @@ def format_object( object, depth)
     pad  += '  '
   end
 
-  print "#{pad} #{object[:path]}"
+  print "#{pad} #{object[:path]}  "
 
-  if REXML::XPath.first( object[:doc], "/layer" )
+  node = object[:doc]
 
-    print "#{pad} "
-    format_object_node( object[:doc], ['name', 'type', 'enabled'] )
-    puts ""
-#     ['name', 'type', 'enabled'].each do |x|
-#       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-#     end
-#  end if 
-  elsif REXML::XPath.first( object[:doc], "/featureType" )
-
-    print "#{pad} "
-    format_object_node( object[:doc], ['title', 'enabled'] )
-    puts ""
-#     ['title', 'enabled'].each do |x|
-#       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-#     end
-#  end
-  elsif REXML::XPath.first( object[:doc], "/namespace" )
-    print "#{pad} "
-    format_object_node( object[:doc], ['prefix'] )
-    puts ""
-
-#     ['prefix'].each do |x|
-#       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-#     end
-#  end
-
-  elsif REXML::XPath.first( object[:doc], "/dataStore" )
-#     ['name','type'].each do |x|
-#       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-#     end
-# 
-    print "#{pad} "
-    format_object_node( object[:doc], ['name', 'type'] )
-    puts ""
-
-    REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
-
-      puts "  #{pad} + #{p.attributes['key']} -> #{p.text}"
-
-      #puts "  "
-  #    how do we pull out the attributes ?
-  #    puts "  #{pad} +#{p.key}"
+  if REXML::XPath.first( node, "/layer" )
+    format_object_node( node, ['name', 'type', 'enabled'] )
+  elsif REXML::XPath.first( node, "/featureType" )
+    format_object_node( node, ['title', 'enabled'] )
+  elsif REXML::XPath.first( node, "/namespace" )
+    format_object_node( node, ['prefix'] )
+  elsif REXML::XPath.first( node, "/dataStore" )
+    format_object_node( node, ['name','type'] ) 
+    print "{"
+    g = []
+    REXML::XPath.each( node, "/dataStore/connectionParameters/*" ) do |p|
+      if [ 'jndiReferenceName', 'schema'].include? ( p.attributes['key'] ) 
+        g << "#{p.attributes['key']}->#{p.text}"
+      end
     end
+    print g.join( ", ")
+    print "}"
   end
+
+  puts ""
 end
 
 
@@ -204,27 +180,29 @@ def format_object_one_line( object, depth)
   # format some common object types for pretty printing
   # pad recursion depth
 
-  if REXML::XPath.first( object[:doc], "/layer" )
+  node = object[:doc]
+
+  if REXML::XPath.first( node, "/layer" )
     puts ""
-    format_object_node( object[:doc], ['name', 'type', 'enabled'])
+    format_object_node( node, ['name', 'type', 'enabled'])
 
-  elsif REXML::XPath.first( object[:doc], "/featureType" )
-    format_object_node( object[:doc], ['title', 'enabled'] ) 
+  elsif REXML::XPath.first( node, "/featureType" )
+    format_object_node( node, ['title', 'enabled'] ) 
 
-  elsif REXML::XPath.first( object[:doc], "/namespace" )
-    format_object_node( object[:doc], ['prefix'] ) 
+  elsif REXML::XPath.first( node, "/namespace" )
+    format_object_node( node, ['prefix'] ) 
 
-  elsif REXML::XPath.first( object[:doc], "/dataStore" )
+  elsif REXML::XPath.first( node, "/dataStore" )
 
-    format_object_node( object[:doc], ['name','type'] ) 
+    format_object_node( node, ['name','type'] ) 
     print "{"
-
-    REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
-
+    g = []
+    REXML::XPath.each( node, "/dataStore/connectionParameters/*" ) do |p|
       if [ 'jndiReferenceName', 'schema'].include? ( p.attributes['key'] ) 
-        print ", #{p.attributes['key']} -> #{p.text}"
+        g << "#{p.attributes['key']}->#{p.text}"
       end
     end
+    print g.join( ", ")
     print "}"
   end
 end
