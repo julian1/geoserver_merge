@@ -187,15 +187,15 @@ def format_object_one_line( object, depth)
   if REXML::XPath.first( object[:doc], "/layer" )
     puts ""
     format_object_element( object, ['name', 'type', 'enabled'])
-  elseif 
-    REXML::XPath.first( object[:doc], "/featureType" )
-    format_object_element( object, ['title', 'enabled'] ) 
-  end
-  if REXML::XPath.first( object[:doc], "/namespace" )
-    format_object_element( object, ['prefix'] ) 
-  end
 
-  if REXML::XPath.first( object[:doc], "/dataStore" )
+  elsif REXML::XPath.first( object[:doc], "/featureType" )
+    format_object_element( object, ['title', 'enabled'] ) 
+
+  elsif REXML::XPath.first( object[:doc], "/namespace" )
+    format_object_element( object, ['prefix'] ) 
+
+  elsif REXML::XPath.first( object[:doc], "/dataStore" )
+
     format_object_element( object, ['name','type'] ) 
 
     REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
