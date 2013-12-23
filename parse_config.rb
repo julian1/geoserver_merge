@@ -187,8 +187,7 @@ def format_object_one_line( object, depth)
   if REXML::XPath.first( object[:doc], "/layer" )
     puts ""
     format_object_element( object, ['name', 'type', 'enabled'])
-  end
-  if 
+  elseif 
     REXML::XPath.first( object[:doc], "/featureType" )
     format_object_element( object, ['title', 'enabled'] ) 
   end
