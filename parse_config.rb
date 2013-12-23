@@ -52,6 +52,20 @@ def create_oid_mappings( geoserver_config_dir )
 end
 
 
+def simple_format_object( object, depth)
+
+  # format some common object types for pretty printing
+
+  # pad recursion depth
+  pad = ''
+  depth.times do 
+    pad  += '  '
+  end
+
+  puts "#{pad} #{object[:path]}"
+end
+
+
 def format_object( object, depth)
 
   # format some common object types for pretty printing
@@ -63,8 +77,6 @@ def format_object( object, depth)
   end
 
   puts "#{pad} #{object[:path]}"
-
-  return
 
   if REXML::XPath.first( object[:doc], "/featureType" )
     ['title', 'enabled'].each do |x|
@@ -97,29 +109,31 @@ def format_object( object, depth)
 end
 
 
-def trace_oid( oids, oid, depth )
+def trace_oid( oids, oid, depth, &block )
 
   # recursively trace out the objects 
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
   oids[ oid].each() do |object|
 
-    format_object( object, depth)
+    # call our block to perform the processing
+    #yield object, depth
+    block.call object, depth 
 
     # find the sub objects this doc refers to
     # and process them
     REXML::XPath.each( object[:doc], "/*/*/id" ) do |e|
-      trace_oid( oids, e.text , depth + 1 )
+      trace_oid( oids, e.text , depth + 1, &block )
     end
   end
 end
 
 
-def start_trace_from_layer_info( oids )
+def begin_trace_from_layer_info( oids, &block )
 
 	# start tracing from the layer root keys
 	oids.keys.each() do |oid|
 	  next unless ( oid =~ /LayerInfoImpl.*/ )
-	  trace_oid( oids, oid, 0)
+	  trace_oid( oids, oid, 0, &block)
 	end
 end
 
@@ -136,8 +150,11 @@ OptionParser.new do |opts|
 end.parse!
 
 
-oids = create_oid_mappings( dir )
-start_trace_from_layer_info( oids)
+
+begin_trace_from_layer_info( create_oid_mappings( dir ) ) do |object, depth|
+
+  format_object( object, depth)
+end
 
 abort('finished') 
 
