@@ -172,7 +172,6 @@ end
 
 def format_object_element( object, fields )
   print "{"
-
   fields.each do |x|
     print ", #{x}->#{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
   end
