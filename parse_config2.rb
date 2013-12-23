@@ -2,6 +2,8 @@
 # Script to trace out the references of a geoserver configuration directory 
 # and output useful configuration data
 
+# This ought to make it easy to copy all needed files in one operation. 
+# And to patch-up workspace and namespace references and jndi entries etc 
 
 require 'rexml/document'
 require 'rexml/xpath'
