@@ -171,10 +171,15 @@ end
 
 
 def format_object_element( object, fields )
+
+  # should change the argument to output the doc
+
   print "{"
+  g = []
   fields.each do |x|
-    print ", #{x}->#{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+    g << "#{x}->#{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
   end
+  print g.join( ", ")
   print "}"
 end
 
@@ -195,14 +200,19 @@ def format_object_one_line( object, depth)
 
   elsif REXML::XPath.first( object[:doc], "/dataStore" )
 
-    format_object_element( object, ['name','type'] ) 
+ #   format_object_element( object, ['name','type'] ) 
+    print "{"
+    ['name','type'].each do |x|
+      print ", #{x}->#{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+    end
 
     REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
+
       if [ 'jndiReferenceName', 'schema'].include? ( p.attributes['key'] ) 
         print ", #{p.attributes['key']} -> #{p.text}"
       end
     end
-    print "{"
+    print "}"
   end
 end
 
@@ -232,10 +242,10 @@ end.parse!
 # 
 
 trace_specific_layer( create_oid_mappings( dir ), "argo_platform_metadata") do |object, depth|
-  
-
   format_object_one_line( object, depth)
 end
+puts
+
 
 abort('finished') 
 
