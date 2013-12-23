@@ -105,6 +105,8 @@ def trace_oid( oids, oid, depth )
       if url
         puts "#{pad(depth+1)} +url #{url.text} "
 
+        # we want to check the url
+        
 
       end
 
@@ -125,13 +127,16 @@ def trace_oid( oids, oid, depth )
 
       # if it's a style with a ref to a stylefile 
       style_file = REXML::XPath.first( node, "/style/filename" )
+
       if style_file
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
+        print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
         if File.exists?( fullpath)
-            puts "#{pad(depth + 1)} STYLEFILE #{fullpath}" 
+            print " (OK)" 
         else
             abort( "missing style file")
         end
+        puts
       end
     
 
@@ -215,25 +220,10 @@ OptionParser.new do |opts|
 end.parse!
 
 if options[:layer]
-
   puts "looking for layer '#{options[:layer]}'" 
-
-  trace_specific_layer( create_oid_mappings( options[:dir] ), options[:layer]) do |object, depth|
-    if options[:verbose]
-        format_object_tree( object, depth)
-    else
-        format_object_one_line( object, depth)
-    end
-  end
+  trace_specific_layer( create_oid_mappings( options[:dir] ), options[:layer]) 
 else 
-
-  begin_trace_from_layer_info( create_oid_mappings( options[:dir] ) ) do |object, depth|
-    if options[:verbose]
-      format_object_tree( object, depth)
-    else
-      format_object_one_line( object, depth)
-    end
-  end
+  begin_trace_from_layer_info( create_oid_mappings( options[:dir] ) ) 
 end
    
 
