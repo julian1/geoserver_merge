@@ -106,13 +106,17 @@ def trace_oid( oids, oid, depth, options )
       if url
         puts "#{pad(depth+1)} +url #{url.text} "
 
-        # we want to check the url
-        # .scan(/(\d*)--([a-z]*)/)
-
-        x = url.text.scan( /file:(.*)/  ) 
+        x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
           # x = url.text.scan( /file:(.*)/  ) 
           puts "LOOKS LIKE A FILE #{x.first().first()} "
+
+
+          fullpath = "#{File.dirname( options[:dir])}/#{x.first().first() }"
+
+          
+          puts "fullpath #{fullpath} "
+
         end
 
       end
