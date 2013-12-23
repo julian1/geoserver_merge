@@ -45,6 +45,8 @@ def create_oid_mappings( geoserver_config_dir )
       oids[ oid.text ] = [ { doc: doc, path: path } ]
     else
       oids[ oid.text ] << { doc: doc, path: path }
+      # puts "duplicate object id #{path}   (#{oids[ oid.text ].path})" 
+      puts "duplicate object id #{path}   (#{oids[ oid.text ].first[:path]  })" 
     end
   end
 
@@ -73,11 +75,19 @@ def trace_oid( oids, oid, depth, options )
     node = object[:doc]
     path = object[:path]
 
-    if REXML::XPath.first( node, "/layer" )
+    if REXML::XPath.first( node, "/GeoServerTileLayer" )
+      puts "#{pad(depth)} *GeoServerTileLayer" 
+      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/GeoServerTileLayer/name').text}"
+
+
+    elsif REXML::XPath.first( node, "/layer" )
       puts "#{pad(depth)} *layer #{path}" 
       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/layer/name').text}"
       puts "#{pad(depth+1)} +type->#{REXML::XPath.first( node, '/layer/type').text}"
-      puts "#{pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/layer/enabled').text}"
+      enabled = REXML::XPath.first( node, '/layer/enabled')
+      if enabled
+        puts "#{pad(depth+1)} +enabled->#{enabled.text}"
+      end
 
       ### we should check the gwc-layer from here,
 
