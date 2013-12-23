@@ -52,16 +52,74 @@ def create_oid_mappings( geoserver_config_dir )
 end
 
 
+
+
+def trace_oid( oids, oid, depth, &block )
+
+  # recursively trace out the objects 
+  # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
+  oids[ oid].each() do |object|
+
+    # call our block to perform the processing
+    #yield object, depth
+    block.call object, depth 
+
+    # find the sub objects this doc refers to
+    # and process them
+    REXML::XPath.each( object[:doc], "/*/*/id" ) do |e|
+      trace_oid( oids, e.text , depth + 1, &block )
+    end
+  end
+end
+
+
+def begin_trace_from_layer_info( oids, &block )
+
+	# start tracing from the layer root keys
+	oids.keys.each() do |oid|
+	  next unless ( oid =~ /LayerInfoImpl.*/ )
+	  trace_oid( oids, oid, 0, &block)
+	end
+end
+
+
+def begin_trace_from_specific_layer( oids, &block )
+
+	# start tracing from the layer root keys
+	oids.keys.each() do |oid|
+
+    next unless ( oid =~ /LayerInfoImpl.*/ )
+
+      
+    oids[ oid].each() do |object|
+
+      x = REXML::XPath.first( object[:doc], "/layer/name" )
+      if x
+
+        puts "layer name -> #{x.text}"
+      end
+
+#      puts "name -> #{REXML::XPath.first( object[:doc], "/layer/name" ).text}"
+    end
+
+#<layer>
+#  <name>argo_profile_download</name
+
+#	  trace_oid( oids, oid, 0, &block)
+	end
+end
+
+
+
+
 def simple_format_object( object, depth)
 
   # format some common object types for pretty printing
-
   # pad recursion depth
   pad = ''
   depth.times do 
     pad  += '  '
   end
-
   puts "#{pad} #{object[:path]}"
 end
 
@@ -69,7 +127,6 @@ end
 def format_object( object, depth)
 
   # format some common object types for pretty printing
-
   # pad recursion depth
   pad = ''
   depth.times do 
@@ -102,39 +159,9 @@ def format_object( object, depth)
     end
 
     REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
-      
       puts "  #{pad} #{p.text}"
     end
   end
-end
-
-
-def trace_oid( oids, oid, depth, &block )
-
-  # recursively trace out the objects 
-  # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
-  oids[ oid].each() do |object|
-
-    # call our block to perform the processing
-    #yield object, depth
-    block.call object, depth 
-
-    # find the sub objects this doc refers to
-    # and process them
-    REXML::XPath.each( object[:doc], "/*/*/id" ) do |e|
-      trace_oid( oids, e.text , depth + 1, &block )
-    end
-  end
-end
-
-
-def begin_trace_from_layer_info( oids, &block )
-
-	# start tracing from the layer root keys
-	oids.keys.each() do |oid|
-	  next unless ( oid =~ /LayerInfoImpl.*/ )
-	  trace_oid( oids, oid, 0, &block)
-	end
 end
 
 
@@ -151,9 +178,17 @@ end.parse!
 
 
 
-begin_trace_from_layer_info( create_oid_mappings( dir ) ) do |object, depth|
 
-  format_object( object, depth)
+
+# begin_trace_from_layer_info( create_oid_mappings( dir ) ) do |object, depth|
+# 
+#   format_object( object, depth)
+# end
+# 
+
+begin_trace_from_specific_layer( create_oid_mappings( dir )) do |object, depth|
+  
+
 end
 
 abort('finished') 
