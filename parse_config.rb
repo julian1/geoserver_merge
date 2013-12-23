@@ -89,7 +89,7 @@ end
 
 def trace_specific_layer( oids, name, &block )
 
-	# loop keys 
+	# loop all keys 
 	oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
     # loop all objects associated with each key
@@ -134,29 +134,29 @@ def format_object( object, depth)
 
   if REXML::XPath.first( object[:doc], "/featureType" )
     ['title', 'enabled'].each do |x|
-      puts "  #{pad} #{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+      puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
     end
   end
 
   if REXML::XPath.first( object[:doc], "/layer" )
     ['name', 'type', 'enabled'].each do |x|
-      puts "  #{pad} #{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+      puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
     end
   end
 
   if REXML::XPath.first( object[:doc], "/namespace" )
     ['prefix'].each do |x|
-      puts "  #{pad} #{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+      puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
     end
   end
 
   if REXML::XPath.first( object[:doc], "/dataStore" )
     ['name','type'].each do |x|
-      puts "  #{pad} #{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+      puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
     end
 
     REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
-      puts "  #{pad} #{p.text}"
+      puts "  #{pad} +#{p.text}"
     end
   end
 end
