@@ -81,7 +81,7 @@ end
 
 
 
-def trace_oid( oids, oid, depth, &block )
+def trace_oid( oids, oid, depth )
 
   # recursively trace out the objects 
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
@@ -132,10 +132,6 @@ def trace_oid( oids, oid, depth, &block )
       if schema
         puts "#{get_pad(depth+1)} +schema #{schema.text} "
       end
-
-
-
-
     end
 
 
@@ -153,11 +149,7 @@ def trace_oid( oids, oid, depth, &block )
             abort( "missing style file")
         end
       end
-
-
     end
-
-
 
 
     # call our block to perform the processing
@@ -167,7 +159,7 @@ def trace_oid( oids, oid, depth, &block )
     # find the sub objects this doc refers to
     # and process them
     REXML::XPath.each( object[:doc], "/*/*/id" ) do |e|
-      trace_oid( oids, e.text , depth + 1, &block )
+      trace_oid( oids, e.text , depth + 1 )
     end
 
 
@@ -179,17 +171,17 @@ end
 ### we are interested in scanning from rather than
 ### everything.
 
-def begin_trace_from_layer_info( oids, &block )
+def begin_trace_from_layer_info( oids )
 
   # start tracing from the layer root keys
 	oids.keys.each() do |oid|
 	  next unless ( oid =~ /LayerInfoImpl.*/ )
-	  trace_oid( oids, oid, 0, &block)
+	  trace_oid( oids, oid, 0 )
 	end
 end
 
 
-def trace_specific_layer( oids, name, &block )
+def trace_specific_layer( oids, name )
 
 	# loop all keys 
 	oids.keys.each() do |oid|
@@ -203,101 +195,10 @@ def trace_specific_layer( oids, name, &block )
       if layer_name && layer_name.text == name
         # got a match, so use recusive scan
         puts "found match for '#{layer_name.text}'!"
-        trace_oid( oids, oid, 0, &block)
+        trace_oid( oids, oid, 0 )
       end
     end
 	end
-end
-
-
-
-
-def simple_format_object( object, depth)
-
-  # format some common object types for pretty printing
-  # pad recursion depth
-  pad = ''
-  depth.times do 
-    pad  += '  '
-  end
-  puts "#{pad} #{object[:path]}"
-end
-
-
-def format_object_node( node, fields )
-  print "{"
-  g = []
-  fields.each do |x|
-    subnode = REXML::XPath.first( node, "//#{x}" )
-    if subnode
-      g << "#{x}->#{REXML::XPath.first( node, "//#{x}" ).text}"
-    else
-      g << "MISSING"
-    end
-  end
-  print g.join( ", ")
-  print "}"
-end
-
-
-def format_object_tree( object, depth)
-
-  # format some common object types for pretty printing
-  # pad recursion depth
-  pad = ''
-  depth.times do 
-    pad += '  '
-  end
-
-  print "#{pad} #{object[:path]} "
-  node = object[:doc]
-  if REXML::XPath.first( node, "/layer" )
-    format_object_node( node, ['name', 'type', 'enabled'] )
-  elsif REXML::XPath.first( node, "/featureType" )
-    format_object_node( node, ['title', 'enabled'] )
-  elsif REXML::XPath.first( node, "/namespace" )
-    format_object_node( node, ['prefix'] )
-  elsif REXML::XPath.first( node, "/dataStore" )
-    format_object_node( node, ['name','type'] ) 
-    print "{"
-    g = []
-    REXML::XPath.each( node, "/dataStore/connectionParameters/*" ) do |p|
-      if [ 'jndiReferenceName', 'schema', 'url'].include? ( p.attributes['key'] ) 
-        g << "#{p.attributes['key']}->#{p.text}"
-      end
-    end
-    print g.join( ", ")
-    print "}"
-  end
-
-  puts ""
-end
-
-
-def format_object_one_line( object, depth)
-
-  # format some common object types for pretty printing
-  # pad recursion depth
-  node = object[:doc]
-  if REXML::XPath.first( node, "/layer" )
-    puts ""
-    format_object_node( node, ['name', 'type', 'enabled'])
-  elsif REXML::XPath.first( node, "/featureType" )
-    format_object_node( node, ['title', 'enabled'] ) 
-  elsif REXML::XPath.first( node, "/namespace" )
-    format_object_node( node, ['prefix'] ) 
-  elsif REXML::XPath.first( node, "/dataStore" )
-    format_object_node( node, ['name','type'] ) 
-    print "{"
-    g = []
-    REXML::XPath.each( node, "/dataStore/connectionParameters/*" ) do |p|
-      if [ 'jndiReferenceName', 'schema', 'url'].include? ( p.attributes['key'] ) 
-        g << "#{p.attributes['key']}->#{p.text}"
-      end
-    end
-    print g.join( ", ")
-    print "}"
-  end
 end
 
 
