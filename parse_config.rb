@@ -24,7 +24,7 @@ def create_oid_mappings( geoserver_config_dir )
 
     # only take xml files
     next unless FileTest.file?(path)
-  #  next unless File.extname(path) == '.xml' or File.extname(path) == '.sld' 
+    # next unless File.extname(path) == '.xml' or File.extname(path) == '.sld' 
     next unless File.extname(path) == '.xml'
 
     # puts "file #{path}"
@@ -52,6 +52,8 @@ def create_oid_mappings( geoserver_config_dir )
 end
 
 
+## we may want to keep a hash through the recursion to keep track of
+## whether we've already looked at a node.
 
 
 def trace_oid( oids, oid, depth, &block )
@@ -97,9 +99,10 @@ def trace_specific_layer( oids, name, &block )
       # try to extract a layername
       layer_name = REXML::XPath.first( object[:doc], "/layer/name" )
       # puts "layer name -> '#{layer_name.text}',  name ->  '#{name}'"
+
       if layer_name && layer_name.text == name
         # got a match, so use recusive scan
-        puts "found match #{layer_name.text}"
+        puts "found match for '#{layer_name.text}'!"
         trace_oid( oids, oid, 0, &block)
       end
     end
@@ -132,14 +135,14 @@ def format_object( object, depth)
 
   puts "#{pad} #{object[:path]}"
 
-  if REXML::XPath.first( object[:doc], "/featureType" )
-    ['title', 'enabled'].each do |x|
+  if REXML::XPath.first( object[:doc], "/layer" )
+    ['name', 'type', 'enabled'].each do |x|
       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
     end
   end
 
-  if REXML::XPath.first( object[:doc], "/layer" )
-    ['name', 'type', 'enabled'].each do |x|
+  if REXML::XPath.first( object[:doc], "/featureType" )
+    ['title', 'enabled'].each do |x|
       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
     end
   end
@@ -156,10 +159,57 @@ def format_object( object, depth)
     end
 
     REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
-      puts "  #{pad} +#{p.text}"
+
+      puts "  #{pad} + #{p.attributes['key']} -> #{p.text}"
+
+      #puts "  "
+  #    how do we pull out the attributes ?
+  #    puts "  #{pad} +#{p.key}"
     end
   end
 end
+
+
+def format_object_element( object, fields )
+  print "{"
+
+  fields.each do |x|
+    print ", #{x}->#{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+  end
+  print "}"
+end
+
+def format_object_one_line( object, depth)
+
+  # format some common object types for pretty printing
+  # pad recursion depth
+
+  if REXML::XPath.first( object[:doc], "/layer" )
+    puts ""
+    format_object_element( object, ['name', 'type', 'enabled'])
+  end
+  if 
+    REXML::XPath.first( object[:doc], "/featureType" )
+    format_object_element( object, ['title', 'enabled'] ) 
+  end
+  if REXML::XPath.first( object[:doc], "/namespace" )
+    format_object_element( object, ['prefix'] ) 
+  end
+
+  if REXML::XPath.first( object[:doc], "/dataStore" )
+    format_object_element( object, ['name','type'] ) 
+
+    REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
+      if [ 'jndiReferenceName', 'schema'].include? ( p.attributes['key'] ) 
+        print ", #{p.attributes['key']} -> #{p.text}"
+      end
+    end
+    print "{"
+  end
+end
+
+
+
 
 
 ### alright we should be passing the formatting or operation that we
@@ -185,8 +235,8 @@ end.parse!
 
 trace_specific_layer( create_oid_mappings( dir ), "argo_platform_metadata") do |object, depth|
   
-  format_object( object, depth)
 
+  format_object_one_line( object, depth)
 end
 
 abort('finished') 
