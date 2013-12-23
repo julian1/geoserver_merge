@@ -124,6 +124,19 @@ def simple_format_object( object, depth)
 end
 
 
+def format_object_node( node, fields )
+
+  # should change the argument to be xml node rather than deoutput the doc
+  print "{"
+  g = []
+  fields.each do |x|
+    g << "#{x}->#{REXML::XPath.first( node, "//#{x}" ).text}"
+  end
+  print g.join( ", ")
+  print "}"
+end
+
+
 def format_object( object, depth)
 
   # format some common object types for pretty printing
@@ -133,30 +146,44 @@ def format_object( object, depth)
     pad  += '  '
   end
 
-  puts "#{pad} #{object[:path]}"
+  print "#{pad} #{object[:path]}"
 
   if REXML::XPath.first( object[:doc], "/layer" )
-    ['name', 'type', 'enabled'].each do |x|
-      puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-    end
-  end
 
-  if REXML::XPath.first( object[:doc], "/featureType" )
-    ['title', 'enabled'].each do |x|
-      puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-    end
-  end
+    print "#{pad} "
+    format_object_node( object[:doc], ['name', 'type', 'enabled'] )
+    puts ""
+#     ['name', 'type', 'enabled'].each do |x|
+#       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+#     end
+#  end if 
+  elsif REXML::XPath.first( object[:doc], "/featureType" )
 
-  if REXML::XPath.first( object[:doc], "/namespace" )
-    ['prefix'].each do |x|
-      puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-    end
-  end
+    print "#{pad} "
+    format_object_node( object[:doc], ['title', 'enabled'] )
+    puts ""
+#     ['title', 'enabled'].each do |x|
+#       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+#     end
+#  end
+  elsif REXML::XPath.first( object[:doc], "/namespace" )
+    print "#{pad} "
+    format_object_node( object[:doc], ['prefix'] )
+    puts ""
 
-  if REXML::XPath.first( object[:doc], "/dataStore" )
-    ['name','type'].each do |x|
-      puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
-    end
+#     ['prefix'].each do |x|
+#       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+#     end
+#  end
+
+  elsif REXML::XPath.first( object[:doc], "/dataStore" )
+#     ['name','type'].each do |x|
+#       puts "  #{pad} +#{x} -> #{REXML::XPath.first( object[:doc], "//#{x}" ).text}"
+#     end
+# 
+    print "#{pad} "
+    format_object_node( object[:doc], ['name', 'type'] )
+    puts ""
 
     REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
 
@@ -170,17 +197,6 @@ def format_object( object, depth)
 end
 
 
-def format_object_element( node, fields )
-
-  # should change the argument to be xml node rather than deoutput the doc
-  print "{"
-  g = []
-  fields.each do |x|
-    g << "#{x}->#{REXML::XPath.first( node, "//#{x}" ).text}"
-  end
-  print g.join( ", ")
-  print "}"
-end
 
 
 def format_object_one_line( object, depth)
@@ -190,17 +206,17 @@ def format_object_one_line( object, depth)
 
   if REXML::XPath.first( object[:doc], "/layer" )
     puts ""
-    format_object_element( object[:doc], ['name', 'type', 'enabled'])
+    format_object_node( object[:doc], ['name', 'type', 'enabled'])
 
   elsif REXML::XPath.first( object[:doc], "/featureType" )
-    format_object_element( object[:doc], ['title', 'enabled'] ) 
+    format_object_node( object[:doc], ['title', 'enabled'] ) 
 
   elsif REXML::XPath.first( object[:doc], "/namespace" )
-    format_object_element( object[:doc], ['prefix'] ) 
+    format_object_node( object[:doc], ['prefix'] ) 
 
   elsif REXML::XPath.first( object[:doc], "/dataStore" )
 
-    format_object_element( object[:doc], ['name','type'] ) 
+    format_object_node( object[:doc], ['name','type'] ) 
     print "{"
 
     REXML::XPath.each( object[:doc], "/dataStore/connectionParameters/*" ) do |p|
@@ -239,7 +255,9 @@ end.parse!
 # 
 
 trace_specific_layer( create_oid_mappings( dir ), "argo_platform_metadata") do |object, depth|
-  format_object_one_line( object, depth)
+ # format_object_one_line( object, depth)
+
+  format_object( object, depth)
 end
 puts
 
