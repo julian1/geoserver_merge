@@ -73,6 +73,10 @@ def trace_oid( oids, oid, depth, &block )
 end
 
 
+### would it make sense to return the list of objects
+### we are interested in scanning from rather than
+### everything.
+
 def begin_trace_from_layer_info( oids, &block )
 
 	# start tracing from the layer root keys
@@ -83,29 +87,22 @@ def begin_trace_from_layer_info( oids, &block )
 end
 
 
-def begin_trace_from_specific_layer( oids, &block )
+def trace_specific_layer( oids, name, &block )
 
-	# start tracing from the layer root keys
+	# loop keys 
 	oids.keys.each() do |oid|
-
     next unless ( oid =~ /LayerInfoImpl.*/ )
-
-      
+    # loop all objects associated with each key
     oids[ oid].each() do |object|
-
-      x = REXML::XPath.first( object[:doc], "/layer/name" )
-      if x
-
-        puts "layer name -> #{x.text}"
+      # try to extract a layername
+      layer_name = REXML::XPath.first( object[:doc], "/layer/name" )
+      # puts "layer name -> '#{layer_name.text}',  name ->  '#{name}'"
+      if layer_name && layer_name.text == name
+        # got a match, so use recusive scan
+        puts "found match #{layer_name.text}"
+        trace_oid( oids, oid, 0, &block)
       end
-
-#      puts "name -> #{REXML::XPath.first( object[:doc], "/layer/name" ).text}"
     end
-
-#<layer>
-#  <name>argo_profile_download</name
-
-#	  trace_oid( oids, oid, 0, &block)
 	end
 end
 
@@ -186,8 +183,9 @@ end.parse!
 # end
 # 
 
-begin_trace_from_specific_layer( create_oid_mappings( dir )) do |object, depth|
+trace_specific_layer( create_oid_mappings( dir ), "argo_platform_metadata") do |object, depth|
   
+  format_object( object, depth)
 
 end
 
