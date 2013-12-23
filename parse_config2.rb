@@ -1,13 +1,4 @@
 
-### ok, another parse config - that is not agnostic as to the type of object that
-### it's looking at. 
-### this will enable targetted operations, such as merging in different workspace urls 
-### etc.
-### also possible to trace file urls
-### and slds 
-### and perform everything needed to copy everything.
-
-
 # Script to trace out the references of a geoserver configuration directory 
 # and output useful configuration data
 
@@ -64,6 +55,31 @@ end
 ## we may want to keep a hash through the recursion to keep track of
 ## whether we've already looked at a node.
 
+def get_pad( depth )
+  # format some common object types for pretty printing
+  # pad recursion depth
+  pad = ''
+  depth.times { pad  += '  ' } 
+  pad
+end
+
+
+def format_object_node( node, path )
+  print "{"
+  g = []
+  fields.each do |x|
+    subnode = REXML::XPath.first( node, path  )
+    if subnode
+      g << "#{x}->#{REXML::XPath.first( node, "//#{x}" ).text}"
+    else
+      g << "MISSING"
+    end
+  end
+  print g.join( ", ")
+  print "}"
+end
+
+
 
 def trace_oid( oids, oid, depth, &block )
 
@@ -71,9 +87,28 @@ def trace_oid( oids, oid, depth, &block )
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
   oids[ oid].each() do |object|
 
+    node = object[:doc]
+    path = object[:path]
+
+
+    if REXML::XPath.first( node, "/layer" )
+      puts "#{get_pad(depth)} *layer #{path}" 
+      puts "#{get_pad(depth+1)} +name->#{REXML::XPath.first( node, '/layer/name').text}"
+      puts "#{get_pad(depth+1)} +type->#{REXML::XPath.first( node, '/layer/type').text}"
+      puts "#{get_pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/layer/enabled').text}"
+    end
+
+    if REXML::XPath.first( node, "/featureType" )
+      puts "#{get_pad(depth)} *featureType #{path}" 
+      puts "#{get_pad(depth+1)} +title->#{REXML::XPath.first( node, '/featureType/title').text}"
+      puts "#{get_pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/featureType/enabled').text}"
+    end
+
+
+
     # call our block to perform the processing
     #yield object, depth
-    block.call object, depth 
+    # block.call object, depth 
 
     # find the sub objects this doc refers to
     # and process them
@@ -81,19 +116,23 @@ def trace_oid( oids, oid, depth, &block )
       trace_oid( oids, e.text , depth + 1, &block )
     end
 
-
-    # if there's a url then trace that dependency ..
-
-    # if there's a gwc
-
-    # etc. 
-
-        
+    # if it's a style with a ref to a stylefile 
     style_file = REXML::XPath.first( object[:doc], "/style/filename" )
     if style_file
-      puts "** got style file!" 
-
+      fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
+      if File.exists?( fullpath)
+          puts "#{get_pad(depth + 1)} STYLEFILE #{fullpath}" 
+      else
+          puts "**MISSING**"
+      end
     end
+
+    # a dataStore with a reference to a shapefile 
+    url = REXML::XPath.first( object[:doc], "/dataStore/connectionParameters/entry[@key='url']" )
+    if url
+      puts "**** WHOOT a datastore with a url #{url.text} "
+    end
+
 
   end
 end
@@ -105,7 +144,7 @@ end
 
 def begin_trace_from_layer_info( oids, &block )
 
-	# start tracing from the layer root keys
+  # start tracing from the layer root keys
 	oids.keys.each() do |oid|
 	  next unless ( oid =~ /LayerInfoImpl.*/ )
 	  trace_oid( oids, oid, 0, &block)
