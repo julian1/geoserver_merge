@@ -105,7 +105,6 @@ def trace_oid( oids, oid, depth, options )
       url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
       if url
         print "#{pad(depth+1)} +url #{url.text} "
-
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
           fullpath = "#{options[:dir]}/#{x.first().first() }"
@@ -116,7 +115,6 @@ def trace_oid( oids, oid, depth, options )
           end
         end
         puts ""
-
       end
 
       jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
@@ -165,13 +163,27 @@ def trace_oid( oids, oid, depth, options )
 
       url = REXML::XPath.first( node, "/coverageStore/url" )
       if url
-        puts "#{pad(depth+1)} +url #{url.text} "
-
-        # we want to check the url
-        
-
+        print "#{pad(depth+1)} +url #{url.text} "
+        x = url.text.scan( /file:(.*)/ ) 
+        if not x.empty? 
+          fullpath = "#{options[:dir]}/#{x.first().first() }"
+          if File.exists?( fullpath)
+              print " (OK)" 
+          else
+              abort( 'aborting')
+          end
+        end
+        puts ""
       end
 
+#       if url
+#         puts "#{pad(depth+1)} +url #{url.text} "
+# 
+#         # we want to check the url
+#         
+# 
+#       end
+# 
 
 
     else 
