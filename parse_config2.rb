@@ -64,7 +64,7 @@ def pad( depth )
 end
 
 
-def trace_oid( oids, oid, depth )
+def trace_oid( oids, oid, depth, options )
 
   # recursively trace out the objects 
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
@@ -79,6 +79,7 @@ def trace_oid( oids, oid, depth )
       puts "#{pad(depth+1)} +type->#{REXML::XPath.first( node, '/layer/type').text}"
       puts "#{pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/layer/enabled').text}"
 
+      ### we should check the gwc-layer from here,
 
     elsif REXML::XPath.first( node, "/featureType" )
       puts "#{pad(depth)} *featureType #{path}" 
@@ -106,7 +107,13 @@ def trace_oid( oids, oid, depth )
         puts "#{pad(depth+1)} +url #{url.text} "
 
         # we want to check the url
-        
+        # .scan(/(\d*)--([a-z]*)/)
+
+        x = url.text.scan( /file:(.*)/  ) 
+        if not x.empty? 
+          # x = url.text.scan( /file:(.*)/  ) 
+          puts "LOOKS LIKE A FILE #{x.first().first()} "
+        end
 
       end
 
@@ -134,7 +141,7 @@ def trace_oid( oids, oid, depth )
         if File.exists?( fullpath)
             print " (OK)" 
         else
-            abort( "missing style file")
+            abort( 'aborting')
         end
         puts
       end
@@ -145,9 +152,30 @@ def trace_oid( oids, oid, depth )
       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/workspace/name').text}"
 
 
+    elsif REXML::XPath.first( node, "/coverage" )
+      puts "#{pad(depth)} *coverage #{path}" 
+      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/coverage/name').text}"
+
+
+    elsif REXML::XPath.first( node, "/coverageStore" )
+      puts "#{pad(depth)} *coverageStore #{path}" 
+      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/coverageStore/name').text}"
+
+      url = REXML::XPath.first( node, "/coverageStore/url" )
+      if url
+        puts "#{pad(depth+1)} +url #{url.text} "
+
+        # we want to check the url
+        
+
+      end
+
+
+
     else 
 
         puts "#{pad(depth+1)} +UNKNOWN #{path}"
+        abort( 'aborting' )
     end
 
 
@@ -158,7 +186,7 @@ def trace_oid( oids, oid, depth )
     # find the sub objects this doc refers to
     # and process them
     REXML::XPath.each( object[:doc], "/*/*/id" ) do |e|
-      trace_oid( oids, e.text , depth + 1 )
+      trace_oid( oids, e.text , depth + 1, options )
     end
 
 
@@ -170,17 +198,17 @@ end
 ### we are interested in scanning from rather than
 ### everything.
 
-def begin_trace_from_layer_info( oids )
+def begin_trace_from_layer_info( oids, options )
 
   # start tracing from the layer root keys
 	oids.keys.each() do |oid|
 	  next unless ( oid =~ /LayerInfoImpl.*/ )
-	  trace_oid( oids, oid, 0 )
+	  trace_oid( oids, oid, 0, options )
 	end
 end
 
 
-def trace_specific_layer( oids, name )
+def trace_specific_layer( oids, name, options )
 
 	# loop all keys 
 	oids.keys.each() do |oid|
@@ -194,7 +222,7 @@ def trace_specific_layer( oids, name )
       if layer_name && layer_name.text == name
         # got a match, so use recusive scan
         puts "found match for '#{layer_name.text}'!"
-        trace_oid( oids, oid, 0 )
+        trace_oid( oids, oid, 0, options )
       end
     end
 	end
@@ -216,14 +244,13 @@ OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
   opts.on('-d', '--directory NAME', 'Geoserver config directory to scan') { |v| options[:dir] = v }
   opts.on('-l', '--layer NAME', 'dump specific layer name') { |v| options[:layer] = v }
-  opts.on("-v", "--[no-]verbose", "Dump paths recursively") { |v| options[:verbose] = v } 
 end.parse!
 
 if options[:layer]
   puts "looking for layer '#{options[:layer]}'" 
-  trace_specific_layer( create_oid_mappings( options[:dir] ), options[:layer]) 
+  trace_specific_layer( create_oid_mappings( options[:dir] ), options[:layer], options) 
 else 
-  begin_trace_from_layer_info( create_oid_mappings( options[:dir] ) ) 
+  begin_trace_from_layer_info( create_oid_mappings( options[:dir] ), options ) 
 end
    
 
