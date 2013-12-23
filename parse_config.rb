@@ -12,55 +12,52 @@ require 'optparse'
 require 'yaml'
 
 
-dir = nil 
-OptionParser.new do |opts|
-  opts.banner = "Usage: example.rb [options]"
-  opts.on('-d', '--directory NAME', 'Directory name') { |v| dir = v }
-  #opts.on('-h', '--sourcehost HOST', 'Source host') { |v| options[:source_host] = v }
-end.parse!
 
 
-# A list of geoserver object identifiers 
-oids = {} 
+def create_oid_mappings( geoserver_config_dir )
 
+  # scan the directory and create a set of mappings from object references
+  # to their paths and xml structure 
 
-# scan the directory and organize files, and their xml structure 
-# in terms of their object identifiers 
+  # the list of geoserver object identifiers 
+  oids = {} 
 
-Find.find( dir  ) do |path|
+  Find.find( geoserver_config_dir  ) do |path|
 
-  # only take xml files
-  next unless FileTest.file?(path)
-  next unless File.extname(path) == '.xml' 
+    # only take xml files
+    next unless FileTest.file?(path)
+  #  next unless File.extname(path) == '.xml' or File.extname(path) == '.sld' 
+    next unless File.extname(path) == '.xml'
 
-  # puts "file #{path}"
+    # puts "file #{path}"
 
-  # get the id of the object represented by the file
-  # this oid will be the first in the file
-  file = File.new( path )
-  doc = REXML::Document.new file
-  oid = REXML::XPath.first( doc, "/*/id" )
-  next unless oid 
+    # get the id of the object represented by the file
+    # this oid will be the first in the file
+    file = File.new( path )
+    doc = REXML::Document.new file
+    oid = REXML::XPath.first( doc, "/*/id" )
+    next unless oid 
 
-  # puts " oid is #{oid.text}"
+    # puts " oid is #{oid.text}"
 
-  # there are cases where same id will have several associated files 
-  # eg. he gwc-layer id corresponds with the layer.xml file
-  # so use a list
-  if oids[ oid.text].nil? 
-    oids[ oid.text ] = [ { doc: doc, path: path } ]
-  else
-    oids[ oid.text ] << { doc: doc, path: path }
+    # there are cases where same id will have several associated files 
+    # eg. he gwc-layer id corresponds with the layer.xml file
+    # so use a list
+    if oids[ oid.text].nil? 
+      oids[ oid.text ] = [ { doc: doc, path: path } ]
+    else
+      oids[ oid.text ] << { doc: doc, path: path }
+    end
   end
 
+  oids
 end
 
 
-puts "---------------"
 
-
-# format some common objects for pretty printing
 def format_object( object, depth)
+
+  # format some common object types for pretty printing
 
   # pad recursion depth
   pad = ''
@@ -119,18 +116,32 @@ def trace_oid( oids, oid, depth )
       trace_oid( oids, e.text , depth + 1 )
     end
   end
-
 end
 
 
-# we start tracing from the layer root keys
-oids.keys.each() do |oid|
 
-  next unless ( oid =~ /LayerInfoImpl.*/ )
-  trace_oid( oids, oid, 0)
+def start_trace_from_layer_info( oids)
+
+	# we start tracing from the layer root keys
+	oids.keys.each() do |oid|
+	  next unless ( oid =~ /LayerInfoImpl.*/ )
+	  trace_oid( oids, oid, 0)
+	end
 end
 
 
+
+
+dir = nil 
+OptionParser.new do |opts|
+  opts.banner = "Usage: example.rb [options]"
+  opts.on('-d', '--directory NAME', 'Directory name') { |v| dir = v }
+  #opts.on('-h', '--sourcehost HOST', 'Source host') { |v| options[:source_host] = v }
+end.parse!
+
+
+oids = create_oid_mappings( dir )
+start_trace_from_layer_info( oids)
 
 abort('finished') 
 
