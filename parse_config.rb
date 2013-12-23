@@ -12,8 +12,6 @@ require 'optparse'
 require 'yaml'
 
 
-
-
 def create_oid_mappings( geoserver_config_dir )
 
   # scan the directory and create a set of mappings from object references
@@ -54,15 +52,14 @@ def create_oid_mappings( geoserver_config_dir )
 end
 
 
-
 def format_object( object, depth)
 
   # format some common object types for pretty printing
 
   # pad recursion depth
   pad = ''
-  while pad.length < depth * 5
-    pad  += ' '
+  depth.times do 
+    pad  += '  '
   end
 
   puts "#{pad} #{object[:path]}"
@@ -100,11 +97,9 @@ def format_object( object, depth)
 end
 
 
-
-
-# recursively trace out the objects 
 def trace_oid( oids, oid, depth )
 
+  # recursively trace out the objects 
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
   oids[ oid].each() do |object|
 
@@ -119,10 +114,9 @@ def trace_oid( oids, oid, depth )
 end
 
 
+def start_trace_from_layer_info( oids )
 
-def start_trace_from_layer_info( oids)
-
-	# we start tracing from the layer root keys
+	# start tracing from the layer root keys
 	oids.keys.each() do |oid|
 	  next unless ( oid =~ /LayerInfoImpl.*/ )
 	  trace_oid( oids, oid, 0)
@@ -130,6 +124,8 @@ def start_trace_from_layer_info( oids)
 end
 
 
+### alright we should be passing the formatting or operation that we
+### want to perform into the recursion.
 
 
 dir = nil 
