@@ -55,30 +55,13 @@ end
 ## we may want to keep a hash through the recursion to keep track of
 ## whether we've already looked at a node.
 
-def get_pad( depth )
+def pad( depth )
   # format some common object types for pretty printing
   # pad recursion depth
   pad = ''
   depth.times { pad  += '  ' } 
   pad
 end
-
-
-def format_object_node( node, path )
-  print "{"
-  g = []
-  fields.each do |x|
-    subnode = REXML::XPath.first( node, path  )
-    if subnode
-      g << "#{x}->#{REXML::XPath.first( node, "//#{x}" ).text}"
-    else
-      g << "MISSING"
-    end
-  end
-  print g.join( ", ")
-  print "}"
-end
-
 
 
 def trace_oid( oids, oid, depth )
@@ -91,64 +74,75 @@ def trace_oid( oids, oid, depth )
     path = object[:path]
 
     if REXML::XPath.first( node, "/layer" )
-      puts "#{get_pad(depth)} *layer #{path}" 
-      puts "#{get_pad(depth+1)} +name->#{REXML::XPath.first( node, '/layer/name').text}"
-      puts "#{get_pad(depth+1)} +type->#{REXML::XPath.first( node, '/layer/type').text}"
-      puts "#{get_pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/layer/enabled').text}"
-    end
+      puts "#{pad(depth)} *layer #{path}" 
+      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/layer/name').text}"
+      puts "#{pad(depth+1)} +type->#{REXML::XPath.first( node, '/layer/type').text}"
+      puts "#{pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/layer/enabled').text}"
 
-    if REXML::XPath.first( node, "/featureType" )
-      puts "#{get_pad(depth)} *featureType #{path}" 
-      puts "#{get_pad(depth+1)} +title->#{REXML::XPath.first( node, '/featureType/title').text}"
-      puts "#{get_pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/featureType/enabled').text}"
-    end
 
-    if REXML::XPath.first( node, "/namespace" )
-      puts "#{get_pad(depth)} *namespace#{path}" 
-      puts "#{get_pad(depth+1)} +prefix->#{REXML::XPath.first( node, '/namespace/prefix').text}"
-    end
+    elsif REXML::XPath.first( node, "/featureType" )
+      puts "#{pad(depth)} *featureType #{path}" 
+      puts "#{pad(depth+1)} +title->#{REXML::XPath.first( node, '/featureType/title').text}"
+      puts "#{pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/featureType/enabled').text}"
 
-    if REXML::XPath.first( node, "/dataStore" )
-      puts "#{get_pad(depth)} *dataStore#{path}" 
-      puts "#{get_pad(depth+1)} +name->#{REXML::XPath.first( node, '/dataStore/name').text}"
+
+    elsif REXML::XPath.first( node, "/namespace" )
+      puts "#{pad(depth)} *namespace #{path}" 
+      puts "#{pad(depth+1)} +prefix->#{REXML::XPath.first( node, '/namespace/prefix').text}"
+
+
+    elsif REXML::XPath.first( node, "/dataStore" )
+      puts "#{pad(depth)} *dataStore #{path}" 
+      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/dataStore/name').text}"
 
       type = REXML::XPath.first( node, '/dataStore/type') 
       if type
-        puts "#{get_pad(depth+1)} +type->#{type.text}"
+        puts "#{pad(depth+1)} +type->#{type.text}"
       end
 
       # a dataStore with a reference to a shapefile 
       url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
       if url
-        puts "#{get_pad(depth+1)} +url #{url.text} "
+        puts "#{pad(depth+1)} +url #{url.text} "
+
+
       end
 
       jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
       if jndi
-        puts "#{get_pad(depth+1)} +jndi #{jndi.text} "
+        puts "#{pad(depth+1)} +jndi #{jndi.text} "
       end
 
       schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
       if schema
-        puts "#{get_pad(depth+1)} +schema #{schema.text} "
+        puts "#{pad(depth+1)} +schema #{schema.text} "
       end
-    end
 
 
-    if REXML::XPath.first( node, "/style" )
-      puts "#{get_pad(depth)} *style#{path}" 
-      puts "#{get_pad(depth+1)} +name->#{REXML::XPath.first( node, '/style/name').text}"
+    elsif REXML::XPath.first( node, "/style" )
+      puts "#{pad(depth)} *style #{path}" 
+      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/style/name').text}"
 
       # if it's a style with a ref to a stylefile 
       style_file = REXML::XPath.first( node, "/style/filename" )
       if style_file
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
         if File.exists?( fullpath)
-            puts "#{get_pad(depth + 1)} STYLEFILE #{fullpath}" 
+            puts "#{pad(depth + 1)} STYLEFILE #{fullpath}" 
         else
             abort( "missing style file")
         end
       end
+    
+
+    elsif REXML::XPath.first( node, "/workspace" )
+      puts "#{pad(depth)} *workspace #{path}" 
+      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/workspace/name').text}"
+
+
+    else 
+
+        puts "#{pad(depth+1)} +UNKNOWN #{path}"
     end
 
 
