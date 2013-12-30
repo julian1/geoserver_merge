@@ -175,22 +175,37 @@ def begin_trace_from_layer_info( oids, options )
     ## patch the files and maybe copy them...
     ## so we can just copy the files ...
 
+    # we really need to avoid overwriting ...  an existing file ...
+        # because it will be the correct imos namespace etc.
+
     files.keys.each() do |key|
 
-      path = files[key][:path]
-  
-      dest = options[:dest_dir] + relative_path( path, options[:source_dir] )
-      
-      puts "#{key}->    #{path} -> #{dest}"
+      src = files[key][:path]
+      dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
+      # puts "#{key}->    #{src} -> #{dest}"
 
-
-    FileUtils.mkdir_p(File.dirname(dest ))    
-      FileUtils.cp_r(path,dest,:verbose => true)
+      if File.exists?( dest)
+        puts "already exists #{dest}"
+      else
+        FileUtils.mkdir_p(File.dirname(dest ))    
+        FileUtils.cp_r(src,dest,:verbose => true)
+      end
 
     end
 
     other_files.each() do |path|
-      puts "#{relative_path( path, options[:source_dir]) }"
+      # puts "#{relative_path( path, options[:source_dir]) }"
+
+      src = path 
+      dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
+
+      if File.exists?( dest)
+        puts "already exists #{dest}"
+      else
+        FileUtils.mkdir_p(File.dirname(dest ))    
+        FileUtils.cp_r(src,dest,:verbose => true)
+      end
+
     end
 
 
