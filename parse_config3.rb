@@ -229,28 +229,26 @@ def begin_trace_from_layer_info( oids, options )
         ## depending on the file we want to modify it. 
 
 
-        ## fix jndi entries
+        # patch jndi entry
         jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
         if jndi and options[:jndi_reference]
           jndi.text = options[:jndi_reference]
           puts "jndi_reference now -> #{jndi.text}"
         end  
 
-        ## possible we should change any workspace id
+        # change workspace
         workspace_id = REXML::XPath.first( node, "//workspace/id") 
         if workspace_id and options[:workspace_id]
           workspace_id.text = options[:workspace_id]
           puts "workspace_id now -> #{workspace_id.text}"
         end  
 
-        ## possible we should change any namespace id
+        # change namespace
         namespace_id = REXML::XPath.first( node, "//namespace/id") 
         if namespace_id and options[:namespace_id]
           namespace_id.text = options[:namespace_id]
           puts "namespace_id now -> #{namespace_id.text}"
         end  
-
-
 
         puts "writing new xml #{src} -> #{dest}"
 
@@ -302,6 +300,7 @@ OptionParser.new do |opts|
   opts.on('-l', '--directory NAME', 'layer') { |v| options[:layer] = v }
   opts.on('-j', '--directory NAME', 'jndi ref') { |v| options[:jndi_reference] = v }
   opts.on('-w', '--directory NAME', 'workspace id') { |v| options[:workspace_id] = v }
+  opts.on('-n', '--directory NAME', 'namespace id') { |v| options[:namespace_id] = v }
 end.parse!
 
 
