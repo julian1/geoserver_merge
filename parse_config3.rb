@@ -27,7 +27,6 @@ def create_oid_mappings( geoserver_config_dir )
 
     # only take xml files
     next unless FileTest.file?(path)
-    # next unless File.extname(path) == '.xml' or File.extname(path) == '.sld' 
     next unless File.extname(path) == '.xml'
 
     # puts "file #{path}"
@@ -68,7 +67,7 @@ def pad( depth )
 end
 
 
-def trace_oid( oids, oid, depth, options )
+def trace_oid( oids, oid, depth, options, lst )
 
   # recursively trace out the objects 
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
@@ -77,37 +76,16 @@ def trace_oid( oids, oid, depth, options )
     node = object[:doc]
     path = object[:path]
 
+    lst << path
+
     if REXML::XPath.first( node, "/GeoServerTileLayer" )
-      puts "#{pad(depth)} *GeoServerTileLayer" 
-      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/GeoServerTileLayer/name').text}"
-
-
     elsif REXML::XPath.first( node, "/layer" )
-      puts "#{pad(depth)} *layer #{path}" 
-      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/layer/name').text}"
-      puts "#{pad(depth+1)} +type->#{REXML::XPath.first( node, '/layer/type').text}"
-      enabled = REXML::XPath.first( node, '/layer/enabled')
-      if enabled
-        puts "#{pad(depth+1)} +enabled->#{enabled.text}"
-      end
-
-      ### we should check the gwc-layer from here,
-
     elsif REXML::XPath.first( node, "/featureType" )
-      puts "#{pad(depth)} *featureType #{path}" 
-      puts "#{pad(depth+1)} +title->#{REXML::XPath.first( node, '/featureType/title').text}"
-      puts "#{pad(depth+1)} +enabled->#{REXML::XPath.first( node, '/featureType/enabled').text}"
-
-
     elsif REXML::XPath.first( node, "/namespace" )
-      puts "#{pad(depth)} *namespace #{path}" 
-      puts "#{pad(depth+1)} +prefix->#{REXML::XPath.first( node, '/namespace/prefix').text}"
-
-
     elsif REXML::XPath.first( node, "/dataStore" )
-      puts "#{pad(depth)} *dataStore #{path}" 
-      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/dataStore/name').text}"
-
+#       puts "#{pad(depth)} *dataStore #{path}" 
+#       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/dataStore/name').text}"
+# 
       type = REXML::XPath.first( node, '/dataStore/type') 
       if type
         puts "#{pad(depth+1)} +type->#{type.text}"
@@ -130,16 +108,16 @@ def trace_oid( oids, oid, depth, options )
         puts ""
       end
 
-      jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-      if jndi
-        puts "#{pad(depth+1)} +jndi #{jndi.text} "
-      end
-
-      schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
-      if schema
-        puts "#{pad(depth+1)} +schema #{schema.text} "
-      end
-
+#       jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+#       if jndi
+#         puts "#{pad(depth+1)} +jndi #{jndi.text} "
+#       end
+# 
+#       schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
+#       if schema
+#         puts "#{pad(depth+1)} +schema #{schema.text} "
+#       end
+# 
 
     elsif REXML::XPath.first( node, "/style" )
       puts "#{pad(depth)} *style #{path}" 
@@ -147,30 +125,16 @@ def trace_oid( oids, oid, depth, options )
 
       # if it's a style with a ref to a stylefile 
       style_file = REXML::XPath.first( node, "/style/filename" )
-
       if style_file
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
         print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
-        if File.exists?( fullpath)
-            print " (OK)" 
-            print " #{File.size(fullpath)}" 
-        else
-            abort( 'aborting')
-        end
+        abort( 'file missing') unless File.exists?( fullpath)
+        lst << fullpath
         puts
       end
     
-
     elsif REXML::XPath.first( node, "/workspace" )
-      puts "#{pad(depth)} *workspace #{path}" 
-      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/workspace/name').text}"
-
-
     elsif REXML::XPath.first( node, "/coverage" )
-      puts "#{pad(depth)} *coverage #{path}" 
-      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/coverage/name').text}"
-
-
     elsif REXML::XPath.first( node, "/coverageStore" )
       puts "#{pad(depth)} *coverageStore #{path}" 
       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/coverageStore/name').text}"
@@ -181,11 +145,8 @@ def trace_oid( oids, oid, depth, options )
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
           fullpath = "#{options[:dir]}/#{x.first().first() }"
-          if File.exists?( fullpath)
-              print " (OK)" 
-          else
-              abort( 'aborting')
-          end
+          abort( 'file missing') unless File.exists?( fullpath)
+          lst << fullpath
         end
         puts ""
       end
@@ -203,7 +164,7 @@ def trace_oid( oids, oid, depth, options )
     # find the sub objects this doc refers to
     # and process them
     REXML::XPath.each( object[:doc], "/*/*/id" ) do |e|
-      trace_oid( oids, e.text , depth + 1, options )
+      trace_oid( oids, e.text , depth + 1, options, lst )
     end
 
 
@@ -220,32 +181,11 @@ def begin_trace_from_layer_info( oids, options )
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
-    trace_oid( oids, oid, 0, options )
+    lst = []
+    trace_oid( oids, oid, 0, options, lst )
+    puts "lst length #{lst.length}"
   end
 end
-
-
-def trace_specific_layer( oids, name, options )
-
-  # loop all keys 
-  oids.keys.each() do |oid|
-    next unless ( oid =~ /LayerInfoImpl.*/ )
-    # loop all objects associated with each key
-    oids[ oid].each() do |object|
-      # try to extract a layername
-      layer_name = REXML::XPath.first( object[:doc], "/layer/name" )
-      # puts "layer name -> '#{layer_name.text}',  name ->  '#{name}'"
-
-      if layer_name && layer_name.text == name
-        # got a match, so use recusive scan
-        puts "found match for '#{layer_name.text}'!"
-        trace_oid( oids, oid, 0, options )
-      end
-    end
-  end
-end
-
-
 
 
 
@@ -260,15 +200,10 @@ options = {}
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
   opts.on('-d', '--directory NAME', 'Geoserver config directory to scan') { |v| options[:dir] = v }
-  opts.on('-l', '--layer NAME', 'dump specific layer name') { |v| options[:layer] = v }
 end.parse!
 
-if options[:layer]
-  puts "looking for layer '#{options[:layer]}'" 
-  trace_specific_layer( create_oid_mappings( options[:dir] ), options[:layer], options) 
-else
-  begin_trace_from_layer_info( create_oid_mappings( options[:dir] ), options ) 
-end
+
+begin_trace_from_layer_info( create_oid_mappings( options[:dir] ), options ) 
 
 
 puts ""
