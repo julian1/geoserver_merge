@@ -205,29 +205,19 @@ def begin_trace_from_layer_info( oids, options )
       ### one -j for new jndi entry, -n for namespace id, -w for workspace id  etc 
 
       ## patch up the datastore file
-      if key == "dataStore"
-        puts "whoot datastore"
+#       if key == "dataStore"
+#         puts "whoot datastore"
+#         type = REXML::XPath.first( node, '/dataStore/type') 
+#         if type
+#           puts "type->#{type.text}"
+#         end
+#       end
+# 
+      ## we really don't care much about the specific file - b
 
-        type = REXML::XPath.first( node, '/dataStore/type') 
-        if type
-          puts "type->#{type.text}"
-        end
+      ### ok, the problem is that we don't really want to copy the file if it already exists
+      ### even if we've modified ...
 
-        jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-        if jndi and options[:jndi_reference]
-          jndi.text = options[:jndi_reference]
-          puts "jndir now -> #{jndi.text}"
-        end  
-
-        workspace_id = REXML::XPath.first( node, "/dataStore/workspace/id") 
-        if workspace_id
-         puts "#{workspace_id.text}"
-        end  
-
-        
-
-
-      end
 
       dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
       # puts "#{key}->    #{src} -> #{dest}"
@@ -237,6 +227,30 @@ def begin_trace_from_layer_info( oids, options )
       else
 
         ## depending on the file we want to modify it. 
+
+
+        ## fix jndi entries
+        jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+        if jndi and options[:jndi_reference]
+          jndi.text = options[:jndi_reference]
+          puts "jndi_reference now -> #{jndi.text}"
+        end  
+
+        ## possible we should change any workspace id
+        workspace_id = REXML::XPath.first( node, "//workspace/id") 
+        if workspace_id and options[:workspace_id]
+          workspace_id.text = options[:workspace_id]
+          puts "workspace_id now -> #{workspace_id.text}"
+        end  
+
+        ## possible we should change any namespace id
+        namespace_id = REXML::XPath.first( node, "//namespace/id") 
+        if namespace_id and options[:namespace_id]
+          namespace_id.text = options[:namespace_id]
+          puts "namespace_id now -> #{namespace_id.text}"
+        end  
+
+
 
         puts "writing new xml #{src} -> #{dest}"
 
@@ -287,6 +301,7 @@ OptionParser.new do |opts|
   opts.on('-d', '--directory NAME', 'destination dir') { |v| options[:dest_dir] = v }
   opts.on('-l', '--directory NAME', 'layer') { |v| options[:layer] = v }
   opts.on('-j', '--directory NAME', 'jndi ref') { |v| options[:jndi_reference] = v }
+  opts.on('-w', '--directory NAME', 'workspace id') { |v| options[:workspace_id] = v }
 end.parse!
 
 
