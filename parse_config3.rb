@@ -67,6 +67,8 @@ def trace_oid( oids, oid, depth, options, files )
       files['GeoServerTileLayer'] = object 
     elsif REXML::XPath.first( node, "/layer" )
       files['layer'] = object 
+      # check for a content ftl file...
+
     elsif REXML::XPath.first( node, "/featureType" )
       files['featureType'] = object 
     elsif REXML::XPath.first( node, "/namespace" )
@@ -86,7 +88,8 @@ def trace_oid( oids, oid, depth, options, files )
         if not x.empty? 
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-          files['dataStore:file'] = { path: fullpath } 
+          # other files
+          files['others'] << fullpath
         end
       end
 
@@ -99,7 +102,8 @@ def trace_oid( oids, oid, depth, options, files )
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
         # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
         abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-        files['style:file'] = { path: fullpath }
+
+        files['others'] << fullpath
       end
     
     elsif REXML::XPath.first( node, "/coverageStore" )
@@ -112,7 +116,7 @@ def trace_oid( oids, oid, depth, options, files )
         if not x.empty? 
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-          files['coverageStore:file'] = { path: fullpath } 
+          files['others'] << fullpath
         end
       end
 
@@ -136,22 +140,18 @@ def begin_trace_from_layer_info( oids, options )
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
-    files = { } 
+    files = { 'others' => [] } 
     trace_oid( oids, oid, 0, options, files )
 
-    print "--------------"
-    print "files #{files.length}, "
-
-#     files.keys.each() do |key|
-#       print "#{key}->#{files[key]}"
-#     end
-# 
+    puts "--------------"
 
     print "name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}, "
 
+    print "files #{files.length}, "
+
     # we want to consolidate this logic
 
-    # this complicated stuff is because it's sometimes malformed
+    # overly complicated stuff is because it's sometimes malformed
     if files['dataStore'] 
       dataStoretype = REXML::XPath.first( files['dataStore'][:xml], '/dataStore/type')
       if dataStoretype and dataStoretype.text == 'PostGIS (JNDI)'
@@ -162,9 +162,14 @@ def begin_trace_from_layer_info( oids, options )
     end
     puts
 
+#    print "layer file -> #{files['layer'][:path]}"
 
-    print "layer file -> #{files['layer'][:path]}"
 
+    files.keys.each() do |key|
+      next if key == 'others'
+      puts "#{key}->#{files[key][:path]}"
+    end
+#
     ### so we could actually edit everything here ... 
     ### changing the workspace,namespace, vector styles here.
 
