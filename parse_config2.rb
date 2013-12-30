@@ -1,3 +1,4 @@
+#!/usr/bin/ruby
 
 # Script to trace out the references of a geoserver configuration directory 
 # and output useful configuration data
@@ -122,6 +123,7 @@ def trace_oid( oids, oid, depth, options )
           fullpath = "#{options[:dir]}/#{x.first().first() }"
           if File.exists?( fullpath)
               print " (OK)" 
+              print " #{File.size(fullpath)}" 
           else
               abort( 'aborting')
           end
@@ -152,6 +154,7 @@ def trace_oid( oids, oid, depth, options )
         print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
         if File.exists?( fullpath)
             print " (OK)" 
+            print " #{File.size(fullpath)}" 
         else
             abort( 'aborting')
         end
@@ -216,17 +219,17 @@ end
 def begin_trace_from_layer_info( oids, options )
 
   # start tracing from the layer root keys
-	oids.keys.each() do |oid|
-	  next unless ( oid =~ /LayerInfoImpl.*/ )
-	  trace_oid( oids, oid, 0, options )
-	end
+  oids.keys.each() do |oid|
+    next unless ( oid =~ /LayerInfoImpl.*/ )
+    trace_oid( oids, oid, 0, options )
+  end
 end
 
 
 def trace_specific_layer( oids, name, options )
 
-	# loop all keys 
-	oids.keys.each() do |oid|
+  # loop all keys 
+  oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
     # loop all objects associated with each key
     oids[ oid].each() do |object|
@@ -240,7 +243,7 @@ def trace_specific_layer( oids, name, options )
         trace_oid( oids, oid, 0, options )
       end
     end
-	end
+  end
 end
 
 
@@ -264,10 +267,10 @@ end.parse!
 if options[:layer]
   puts "looking for layer '#{options[:layer]}'" 
   trace_specific_layer( create_oid_mappings( options[:dir] ), options[:layer], options) 
-else 
+else
   begin_trace_from_layer_info( create_oid_mappings( options[:dir] ), options ) 
 end
-   
+
 
 puts ""
 
