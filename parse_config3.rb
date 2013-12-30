@@ -148,23 +148,22 @@ def begin_trace_from_layer_info( oids, options )
 
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
+
+    # only concerned with tracing from a layer
     next unless ( oid =~ /LayerInfoImpl.*/ )
 
+    # if we're trying to scan from a specific layer
     if options[:layer]
       found = false
       oids[ oid].each() do |object|
-        # try to extract a layername
         layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
-        if layer_name && layer_name.text == options[:layer]
-          found = true
-        end
+        found = layer_name && layer_name.text == options[:layer]
       end
       next unless found
     end
 
-#   next unless REXML::XPath.first( oids[oid], "/layer/name" ).text == options[:layer]
-    # we basically have to fix up the namespaces  
 
+    # do the scan
     files = {} 
     other_files = []
     trace_oid( oids, oid, 0, options, files, other_files )
