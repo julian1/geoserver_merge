@@ -34,8 +34,8 @@ def create_oid_mappings( options)
     # get the id of the object represented by the file
     # this oid will be the first in the file
     file = File.new( path )
-    doc = REXML::Document.new file
-    oid = REXML::XPath.first( doc, "/*/id" )
+    xml = REXML::Document.new file
+    oid = REXML::XPath.first( xml, "/*/id" )
     next unless oid 
 
     # puts " oid is #{oid.text}"
@@ -44,9 +44,9 @@ def create_oid_mappings( options)
     # eg. he gwc-layer id corresponds with the layer.xml file
     # so use a list
     if oids[ oid.text].nil? 
-      oids[ oid.text ] = [ { doc: doc, path: path } ]
+      oids[ oid.text ] = [ { xml: xml, path: path } ]
     else
-      oids[ oid.text ] << { doc: doc, path: path }
+      oids[ oid.text ] << { xml: xml, path: path }
       puts "duplicate object id #{path}   (#{oids[ oid.text ].first[:path]  })" 
     end
   end
@@ -60,7 +60,7 @@ def trace_oid( oids, oid, depth, options, lst )
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
   oids[ oid].each() do |object|
 
-    node = object[:doc]
+    node = object[:xml]
     path = object[:path]
 
     if REXML::XPath.first( node, "/GeoServerTileLayer" )
@@ -122,7 +122,7 @@ def trace_oid( oids, oid, depth, options, lst )
 
     # find the sub objects this doc refers to
     # and process them
-    REXML::XPath.each( object[:doc], "/*/*/id" ) do |e|
+    REXML::XPath.each( object[:xml], "/*/*/id" ) do |e|
       trace_oid( oids, e.text , depth + 1, options, lst )
     end
   end
@@ -149,13 +149,13 @@ def begin_trace_from_layer_info( oids, options )
 #     end
 # 
 
-    print "name-> #{REXML::XPath.first( lst['layer'][:doc], '/layer/name').text}, "
+    print "name-> #{REXML::XPath.first( lst['layer'][:xml], '/layer/name').text}, "
 
     # we want to consolidate this logic
 
     # this complicated stuff is because it's sometimes malformed
     if lst['dataStore'] 
-      dataStoretype = REXML::XPath.first( lst['dataStore'][:doc], '/dataStore/type')
+      dataStoretype = REXML::XPath.first( lst['dataStore'][:xml], '/dataStore/type')
       if dataStoretype and dataStoretype.text == 'PostGIS (JNDI)'
         print "jndi type "
       else
