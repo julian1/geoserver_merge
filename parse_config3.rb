@@ -214,8 +214,9 @@ def begin_trace_from_layer_info( oids, options )
         end
 
         jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-        if jndi
-         puts "#{jndi.text}"
+        if jndi and options[:jndi_reference]
+          jndi.text = options[:jndi_reference]
+          puts "jndir now -> #{jndi.text}"
         end  
 
         workspace_id = REXML::XPath.first( node, "/dataStore/workspace/id") 
@@ -285,6 +286,7 @@ OptionParser.new do |opts|
   opts.on('-s', '--directory NAME', 'source dir to scan') { |v| options[:source_dir] = v }
   opts.on('-d', '--directory NAME', 'destination dir') { |v| options[:dest_dir] = v }
   opts.on('-l', '--directory NAME', 'layer') { |v| options[:layer] = v }
+  opts.on('-j', '--directory NAME', 'jndi ref') { |v| options[:jndi_reference] = v }
 end.parse!
 
 
