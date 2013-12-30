@@ -199,22 +199,62 @@ def begin_trace_from_layer_info( oids, options )
 
 
       src = files[key][:path]
+      node = files[key][:xml]
+
+      ### should perhaps pass these as explicit argumnets
+      ### one -j for new jndi entry, -n for namespace id, -w for workspace id  etc 
+
+      ## patch up the datastore file
+      if key == "dataStore"
+        puts "whoot datastore"
+
+        type = REXML::XPath.first( node, '/dataStore/type') 
+        if type
+          puts "type->#{type.text}"
+        end
+
+        jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+        if jndi
+         puts "#{jndi.text}"
+        end  
+
+        workspace_id = REXML::XPath.first( node, "/dataStore/workspace/id") 
+        if workspace_id
+         puts "#{workspace_id.text}"
+        end  
+
+        
+
+
+      end
+
       dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
       # puts "#{key}->    #{src} -> #{dest}"
 
       if File.exists?( dest)
         puts "already exists #{dest}"
       else
-        puts "copying #{src} -> #{dest}"
+
+        ## depending on the file we want to modify it. 
+
+        puts "writing new xml #{src} -> #{dest}"
+
         FileUtils.mkdir_p(File.dirname(dest ))    
-        FileUtils.cp_r(src,dest)
+
+        File.open( dest,"w") do |data|
+           data << node
+        end
+
+
+#         puts "copying #{src} -> #{dest}"
+#         FileUtils.mkdir_p(File.dirname(dest ))    
+#         FileUtils.cp_r(src,dest)
       end
 
     end
 
+    # other support files
     other_files.each() do |path|
-      # puts "#{relative_path( path, options[:source_dir]) }"
-
       src = path 
       dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
 
