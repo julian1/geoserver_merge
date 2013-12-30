@@ -58,14 +58,14 @@ end
 ## we may want to keep a hash through the recursion to keep track of
 ## whether we've already looked at a node.
 
-def pad( depth )
-  # format some common object types for pretty printing
-  # pad recursion depth
-  pad = ''
-  depth.times { pad  += '  ' } 
-  pad
-end
-
+# def pad( depth )
+#   # format some common object types for pretty printing
+#   # pad recursion depth
+#   pad = ''
+#   depth.times { pad  += '  ' } 
+#   pad
+# end
+# 
 
 def trace_oid( oids, oid, depth, options, lst )
 
@@ -86,29 +86,23 @@ def trace_oid( oids, oid, depth, options, lst )
     elsif REXML::XPath.first( node, "/coverage" )
 
     elsif REXML::XPath.first( node, "/dataStore" )
-#       puts "#{pad(depth)} *dataStore #{path}" 
-#       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/dataStore/name').text}"
 # 
-      type = REXML::XPath.first( node, '/dataStore/type') 
-      if type
-        puts "#{pad(depth+1)} +type->#{type.text}"
-      end
-
+#       type = REXML::XPath.first( node, '/dataStore/type') 
+#       if type
+#         puts "#{pad(depth+1)} +type->#{type.text}"
+#       end
+# 
       # a dataStore with a reference to a shapefile or other geometry
       url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
       if url
-        print "#{pad(depth+1)} +url #{url.text} "
+        # print "#{pad(depth+1)} +url #{url.text} "
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
           fullpath = "#{options[:dir]}/#{x.first().first() }"
-          if File.exists?( fullpath)
-              print " (OK)" 
-              print " #{File.size(fullpath)}" 
-          else
-              abort( 'aborting')
-          end
+          abort( "missing file #{fullpath}") unless File.exists?( fullpath)
+          lst << fullpath
         end
-        puts ""
+#        puts ""
       end
 
 #       jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
@@ -123,38 +117,37 @@ def trace_oid( oids, oid, depth, options, lst )
 # 
 
     elsif REXML::XPath.first( node, "/style" )
-      puts "#{pad(depth)} *style #{path}" 
-      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/style/name').text}"
-
+#       puts "#{pad(depth)} *style #{path}" 
+#       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/style/name').text}"
+# 
       # if it's a style with a ref to a stylefile 
       style_file = REXML::XPath.first( node, "/style/filename" )
       if style_file
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
-        print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
-        abort( 'file missing') unless File.exists?( fullpath)
+        # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
+        abort( "missing file #{fullpath}") unless File.exists?( fullpath)
         lst << fullpath
         puts
       end
     
     elsif REXML::XPath.first( node, "/coverageStore" )
-      puts "#{pad(depth)} *coverageStore #{path}" 
-      puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/coverageStore/name').text}"
+#       puts "#{pad(depth)} *coverageStore #{path}" 
+#       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/coverageStore/name').text}"
 
       url = REXML::XPath.first( node, "/coverageStore/url" )
       if url
-        print "#{pad(depth+1)} +url #{url.text} "
+        # print "#{pad(depth+1)} +url #{url.text} "
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
           fullpath = "#{options[:dir]}/#{x.first().first() }"
-          abort( 'file missing') unless File.exists?( fullpath)
+          abort( "missing file #{fullpath}") unless File.exists?( fullpath)
           lst << fullpath
         end
         puts ""
       end
 
     else 
-        puts "#{pad(depth+1)} +UNKNOWN element #{path}"
-        abort( 'aborting' )
+        abort( "#{pad(depth+1)} +UNKNOWN element #{path}"  )
     end
 
 
