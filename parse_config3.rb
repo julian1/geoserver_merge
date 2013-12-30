@@ -13,6 +13,7 @@ require 'find'
 
 require 'optparse'
 require 'yaml'
+require 'fileutils'
 
 
 
@@ -134,11 +135,11 @@ def trace_oid( oids, oid, depth, options, files, other_files )
 end
 
 
-def relative_path( path, options )
-
+def relative_path( path, dir )
+  # path with respect to dir
   path1 = File.expand_path( path)
-  dir = File.expand_path( options[:source_dir] )
-  path1[dir.length, 10000 ]
+  dir = File.expand_path( dir )
+  path1[dir.length, 1000000 ]
 
 end
 
@@ -170,20 +171,26 @@ def begin_trace_from_layer_info( oids, options )
     end
     puts
 
-#    print "layer file -> #{files['layer'][:path]}"
 
-# think we want to carry them in separate  
+    ## patch the files and maybe copy them...
+    ## so we can just copy the files ...
 
     files.keys.each() do |key|
-      path = files[key][:path]
 
-      puts "#{key}->#{relative_path( path, options)}"
+      path = files[key][:path]
+  
+      dest = options[:dest_dir] + relative_path( path, options[:source_dir] )
+      
+      puts "#{key}->    #{path} -> #{dest}"
+
+
+    FileUtils.mkdir_p(File.dirname(dest ))    
+      FileUtils.cp_r(path,dest,:verbose => true)
+
     end
 
     other_files.each() do |path|
-
-
-      puts "#{relative_path( path, options) }"
+      puts "#{relative_path( path, options[:source_dir]) }"
     end
 
 
