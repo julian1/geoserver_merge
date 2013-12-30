@@ -136,11 +136,11 @@ end
 
 
 def relative_path( path, dir )
-  # path with respect to dir
+  # subtract dir from path to give relative path
+  # TODO must be a better way!
   path1 = File.expand_path( path)
   dir = File.expand_path( dir )
   path1[dir.length, 1000000 ]
-
 end
 
 
@@ -152,7 +152,7 @@ def begin_trace_from_layer_info( oids, options )
     # only concerned with tracing from a layer
     next unless ( oid =~ /LayerInfoImpl.*/ )
 
-    # if we're trying to scan from a specific layer
+    # limit scan to specific layer if specified in options
     if options[:layer]
       found = false
       oids[ oid].each() do |object|
@@ -170,23 +170,22 @@ def begin_trace_from_layer_info( oids, options )
 
     puts "--------------"
 
-    print "name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}, "
-
-    print "files #{files.length}, "
+    puts "name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}, "
+    puts "num files #{files.length}, "
 
     # we want to consolidate this logic
 
-    # overly complicated stuff is because it's sometimes malformed
-    if files['dataStore'] 
-      dataStoretype = REXML::XPath.first( files['dataStore'][:xml], '/dataStore/type')
-      if dataStoretype and dataStoretype.text == 'PostGIS (JNDI)'
-        print "jndi type "
-      else
-        print "**NON jndi type "
-      end
-    end
-    puts
-
+#     # identify whether it's a jndi type 
+#     if files['dataStore'] 
+#       dataStoretype = REXML::XPath.first( files['dataStore'][:xml], '/dataStore/type')
+#       if dataStoretype and dataStoretype.text == 'PostGIS (JNDI)'
+#         print "jndi type "
+#       else
+#         print "**NON jndi type "
+#       end
+#     end
+#     puts
+# 
 
     ## patch the files and maybe copy them...
     ## so we can just copy the files ...
