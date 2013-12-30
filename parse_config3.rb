@@ -15,6 +15,7 @@ require 'optparse'
 require 'yaml'
 
 
+
 def create_oid_mappings( options)
 
   # scan the directory and create a set of mappings from object references
@@ -133,7 +134,13 @@ def trace_oid( oids, oid, depth, options, files, other_files )
 end
 
 
+def relative_path( path, options )
 
+  path1 = File.expand_path( path)
+  dir = File.expand_path( options[:source_dir] )
+  path1[dir.length, 10000 ]
+
+end
 
 def begin_trace_from_layer_info( oids, options )
 
@@ -168,11 +175,15 @@ def begin_trace_from_layer_info( oids, options )
 # think we want to carry them in separate  
 
     files.keys.each() do |key|
-      puts "#{key}->#{files[key][:path]}"
+      path = files[key][:path]
+
+      puts "#{key}->#{relative_path( path, options)}"
     end
 
     other_files.each() do |path|
-      puts "#{path}"
+
+
+      puts "#{relative_path( path, options) }"
     end
 
 
