@@ -54,7 +54,7 @@ def create_oid_mappings( options)
 end
 
 
-def trace_oid( oids, oid, depth, options, lst )
+def trace_oid( oids, oid, depth, options, files )
 
   # recursively trace out the objects 
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
@@ -64,19 +64,19 @@ def trace_oid( oids, oid, depth, options, lst )
     path = object[:path]
 
     if REXML::XPath.first( node, "/GeoServerTileLayer" )
-      lst['GeoServerTileLayer'] = object 
+      files['GeoServerTileLayer'] = object 
     elsif REXML::XPath.first( node, "/layer" )
-      lst['layer'] = object 
+      files['layer'] = object 
     elsif REXML::XPath.first( node, "/featureType" )
-      lst['featureType'] = object 
+      files['featureType'] = object 
     elsif REXML::XPath.first( node, "/namespace" )
-      lst['namespace'] = object 
+      files['namespace'] = object 
     elsif REXML::XPath.first( node, "/workspace" )
-      lst['workspace'] = object 
+      files['workspace'] = object 
     elsif REXML::XPath.first( node, "/coverage" )
-      lst['coverage'] = object 
+      files['coverage'] = object 
     elsif REXML::XPath.first( node, "/dataStore" )
-      lst['dataStore'] = object 
+      files['dataStore'] = object 
  
       # a dataStore with a reference to a shapefile or other geometry
       url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
@@ -86,12 +86,12 @@ def trace_oid( oids, oid, depth, options, lst )
         if not x.empty? 
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-          lst['dataStore:file'] = { path: fullpath } 
+          files['dataStore:file'] = { path: fullpath } 
         end
       end
 
     elsif REXML::XPath.first( node, "/style" )
-      lst['style'] = object
+      files['style'] = object
 
       # if it's a style with a ref to a stylefile 
       style_file = REXML::XPath.first( node, "/style/filename" )
@@ -99,11 +99,11 @@ def trace_oid( oids, oid, depth, options, lst )
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
         # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
         abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-        lst['style:file'] = { path: fullpath }
+        files['style:file'] = { path: fullpath }
       end
     
     elsif REXML::XPath.first( node, "/coverageStore" )
-      lst['coverageStore'] = object
+      files['coverageStore'] = object
 
       url = REXML::XPath.first( node, "/coverageStore/url" )
       if url
@@ -112,7 +112,7 @@ def trace_oid( oids, oid, depth, options, lst )
         if not x.empty? 
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-          lst['coverageStore:file'] = { path: fullpath } 
+          files['coverageStore:file'] = { path: fullpath } 
         end
       end
 
@@ -123,39 +123,37 @@ def trace_oid( oids, oid, depth, options, lst )
     # find the sub objects this doc refers to
     # and process them
     REXML::XPath.each( object[:xml], "/*/*/id" ) do |e|
-      trace_oid( oids, e.text , depth + 1, options, lst )
+      trace_oid( oids, e.text , depth + 1, options, files )
     end
   end
 end
 
 
-### would it make sense to return the list of objects
-### we are interested in scanning from rather than
-### everything.
+
 
 def begin_trace_from_layer_info( oids, options )
 
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
-    lst = { } 
-    trace_oid( oids, oid, 0, options, lst )
+    files = { } 
+    trace_oid( oids, oid, 0, options, files )
 
     print "--------------"
-    print "files #{lst.length}, "
+    print "files #{files.length}, "
 
-#     lst.keys.each() do |key|
-#       print "#{key}->#{lst[key]}"
+#     files.keys.each() do |key|
+#       print "#{key}->#{files[key]}"
 #     end
 # 
 
-    print "name-> #{REXML::XPath.first( lst['layer'][:xml], '/layer/name').text}, "
+    print "name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}, "
 
     # we want to consolidate this logic
 
     # this complicated stuff is because it's sometimes malformed
-    if lst['dataStore'] 
-      dataStoretype = REXML::XPath.first( lst['dataStore'][:xml], '/dataStore/type')
+    if files['dataStore'] 
+      dataStoretype = REXML::XPath.first( files['dataStore'][:xml], '/dataStore/type')
       if dataStoretype and dataStoretype.text == 'PostGIS (JNDI)'
         print "jndi type "
       else
@@ -163,6 +161,9 @@ def begin_trace_from_layer_info( oids, options )
       end
     end
     puts
+
+
+    print "layer file -> #{files['layer'][:path]}"
 
     ### so we could actually edit everything here ... 
     ### changing the workspace,namespace, vector styles here.
