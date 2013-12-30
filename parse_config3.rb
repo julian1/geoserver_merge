@@ -150,23 +150,17 @@ def begin_trace_from_layer_info( oids, options )
   oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
 
-    found = false
-    oids[ oid].each() do |object|
-      # try to extract a layername
-      layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
-      
-     # puts "layer name -> '#{layer_name.text}'"
-
-    if layer_name && layer_name.text == options[:layer]
-      found = true
-#         # got a match, so use recusive scan
-#         puts "found match for '#{layer_name.text}'!"
-#         trace_oid( oids, oid, 0, options )
-       end
-#      next unless REXML::XPath.first( object[:xml], "/layer/name" ).text == options[:layer]
+    if options[:layer]
+      found = false
+      oids[ oid].each() do |object|
+        # try to extract a layername
+        layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
+        if layer_name && layer_name.text == options[:layer]
+          found = true
+        end
+      end
+      next unless found
     end
-
-    next unless found
 
 #   next unless REXML::XPath.first( oids[oid], "/layer/name" ).text == options[:layer]
     # we basically have to fix up the namespaces  
