@@ -15,7 +15,7 @@ require 'optparse'
 require 'yaml'
 
 
-def create_oid_mappings( geoserver_config_dir )
+def create_oid_mappings( options)
 
   # scan the directory and create a set of mappings from object references
   # to their paths and xml structure 
@@ -23,7 +23,7 @@ def create_oid_mappings( geoserver_config_dir )
   # the list of geoserver object identifiers 
   oids = {} 
 
-  Find.find( geoserver_config_dir  ) do |path|
+  Find.find( options[:source_dir] ) do |path|
 
     # only take xml files
     next unless FileTest.file?(path)
@@ -50,22 +50,9 @@ def create_oid_mappings( geoserver_config_dir )
       puts "duplicate object id #{path}   (#{oids[ oid.text ].first[:path]  })" 
     end
   end
-
   oids
 end
 
-
-## we may want to keep a hash through the recursion to keep track of
-## whether we've already looked at a node.
-
-# def pad( depth )
-#   # format some common object types for pretty printing
-#   # pad recursion depth
-#   pad = ''
-#   depth.times { pad  += '  ' } 
-#   pad
-# end
-# 
 
 def trace_oid( oids, oid, depth, options, lst )
 
@@ -76,92 +63,68 @@ def trace_oid( oids, oid, depth, options, lst )
     node = object[:doc]
     path = object[:path]
 
-    lst << path
-
     if REXML::XPath.first( node, "/GeoServerTileLayer" )
+      lst['GeoServerTileLayer'] = object 
     elsif REXML::XPath.first( node, "/layer" )
+      lst['layer'] = object 
     elsif REXML::XPath.first( node, "/featureType" )
+      lst['featureType'] = object 
     elsif REXML::XPath.first( node, "/namespace" )
+      lst['namespace'] = object 
     elsif REXML::XPath.first( node, "/workspace" )
+      lst['workspace'] = object 
     elsif REXML::XPath.first( node, "/coverage" )
-
+      lst['coverage'] = object 
     elsif REXML::XPath.first( node, "/dataStore" )
-# 
-#       type = REXML::XPath.first( node, '/dataStore/type') 
-#       if type
-#         puts "#{pad(depth+1)} +type->#{type.text}"
-#       end
-# 
+      lst['dataStore'] = object 
+ 
       # a dataStore with a reference to a shapefile or other geometry
       url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
       if url
         # print "#{pad(depth+1)} +url #{url.text} "
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
-          fullpath = "#{options[:dir]}/#{x.first().first() }"
+          fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-          lst << fullpath
+          lst['dataStore:file'] = { path: fullpath } 
         end
-#        puts ""
       end
 
-#       jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-#       if jndi
-#         puts "#{pad(depth+1)} +jndi #{jndi.text} "
-#       end
-# 
-#       schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
-#       if schema
-#         puts "#{pad(depth+1)} +schema #{schema.text} "
-#       end
-# 
-
     elsif REXML::XPath.first( node, "/style" )
-#       puts "#{pad(depth)} *style #{path}" 
-#       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/style/name').text}"
-# 
+      lst['style'] = object
+
       # if it's a style with a ref to a stylefile 
       style_file = REXML::XPath.first( node, "/style/filename" )
       if style_file
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
         # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
         abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-        lst << fullpath
-        puts
+        lst['style:file'] = { path: fullpath }
       end
     
     elsif REXML::XPath.first( node, "/coverageStore" )
-#       puts "#{pad(depth)} *coverageStore #{path}" 
-#       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/coverageStore/name').text}"
+      lst['coverageStore'] = object
 
       url = REXML::XPath.first( node, "/coverageStore/url" )
       if url
         # print "#{pad(depth+1)} +url #{url.text} "
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
-          fullpath = "#{options[:dir]}/#{x.first().first() }"
+          fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-          lst << fullpath
+          lst['coverageStore:file'] = { path: fullpath } 
         end
-        puts ""
       end
 
     else 
         abort( "#{pad(depth+1)} +UNKNOWN element #{path}"  )
     end
 
-
-    # call our block to perform the processing
-    #yield object, depth
-    # block.call object, depth 
-
     # find the sub objects this doc refers to
     # and process them
     REXML::XPath.each( object[:doc], "/*/*/id" ) do |e|
       trace_oid( oids, e.text , depth + 1, options, lst )
     end
-
-
   end
 end
 
@@ -175,9 +138,38 @@ def begin_trace_from_layer_info( oids, options )
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
-    lst = []
+    lst = { } 
     trace_oid( oids, oid, 0, options, lst )
-    puts "lst length #{lst.length}"
+
+    print "--------------"
+    print "files #{lst.length}, "
+
+#     lst.keys.each() do |key|
+#       print "#{key}->#{lst[key]}"
+#     end
+# 
+
+    print "name-> #{REXML::XPath.first( lst['layer'][:doc], '/layer/name').text}, "
+
+    # we want to consolidate this logic
+
+    # this complicated stuff is because it's sometimes malformed
+    if lst['dataStore'] 
+      dataStoretype = REXML::XPath.first( lst['dataStore'][:doc], '/dataStore/type')
+      if dataStoretype and dataStoretype.text == 'PostGIS (JNDI)'
+        print "jndi type "
+      else
+        print "**NON jndi type "
+      end
+    end
+    puts
+
+    ### so we could actually edit everything here ... 
+    ### changing the workspace,namespace, vector styles here.
+
+    ## we would copy the files according to type ... 
+    ### while editing the xml. 
+
   end
 end
 
@@ -187,17 +179,17 @@ end
 ### want to perform into the recursion.
 
 
-require 'optparse'
 
 options = {}
 
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
-  opts.on('-d', '--directory NAME', 'Geoserver config directory to scan') { |v| options[:dir] = v }
+  opts.on('-s', '--directory NAME', 'source dir to scan') { |v| options[:source_dir] = v }
+  opts.on('-d', '--directory NAME', 'destination dir') { |v| options[:dest_dir] = v }
 end.parse!
 
 
-begin_trace_from_layer_info( create_oid_mappings( options[:dir] ), options ) 
+begin_trace_from_layer_info( create_oid_mappings( options ), options ) 
 
 
 puts ""
