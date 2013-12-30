@@ -3,6 +3,8 @@
 # copy geoserver configuration from one directory to another, with support to 
 # change a few important configuration options
 
+# TODO we are missing ftls - in the top and sub-level directories. 
+
 
 require 'rexml/document'
 require 'rexml/xpath'
@@ -243,7 +245,7 @@ OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
   opts.on('-s', '--directory NAME', 'source dir') { |v| options[:source_dir] = v }
   opts.on('-d', '--directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
-  opts.on('-l', '--directory NAME', 'layer') { |v| options[:layer] = v }
+  opts.on('-l', '--directory NAME', 'specific layer - otherwise all layers') { |v| options[:layer] = v }
   opts.on('-j', '--directory NAME', 'jndi ref') { |v| options[:jndi_reference] = v }
   opts.on('-w', '--directory NAME', 'workspace id') { |v| options[:workspace_id] = v }
   opts.on('-n', '--directory NAME', 'namespace id') { |v| options[:namespace_id] = v }
