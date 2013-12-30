@@ -143,12 +143,35 @@ def relative_path( path, dir )
 
 end
 
+
 def begin_trace_from_layer_info( oids, options )
 
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
-    files = { } 
+
+    found = false
+    oids[ oid].each() do |object|
+      # try to extract a layername
+      layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
+      
+     # puts "layer name -> '#{layer_name.text}'"
+
+    if layer_name && layer_name.text == options[:layer]
+      found = true
+#         # got a match, so use recusive scan
+#         puts "found match for '#{layer_name.text}'!"
+#         trace_oid( oids, oid, 0, options )
+       end
+#      next unless REXML::XPath.first( object[:xml], "/layer/name" ).text == options[:layer]
+    end
+
+    next unless found
+
+#   next unless REXML::XPath.first( oids[oid], "/layer/name" ).text == options[:layer]
+    # we basically have to fix up the namespaces  
+
+    files = {} 
     other_files = []
     trace_oid( oids, oid, 0, options, files, other_files )
 
@@ -180,6 +203,9 @@ def begin_trace_from_layer_info( oids, options )
 
     files.keys.each() do |key|
 
+      ### so for some files we would avoid them
+
+
       src = files[key][:path]
       dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
       # puts "#{key}->    #{src} -> #{dest}"
@@ -187,8 +213,9 @@ def begin_trace_from_layer_info( oids, options )
       if File.exists?( dest)
         puts "already exists #{dest}"
       else
+        puts "copying #{src} -> #{dest}"
         FileUtils.mkdir_p(File.dirname(dest ))    
-        FileUtils.cp_r(src,dest,:verbose => true)
+        FileUtils.cp_r(src,dest)
       end
 
     end
@@ -202,20 +229,12 @@ def begin_trace_from_layer_info( oids, options )
       if File.exists?( dest)
         puts "already exists #{dest}"
       else
+        puts "copying #{src} -> #{dest}"
         FileUtils.mkdir_p(File.dirname(dest ))    
-        FileUtils.cp_r(src,dest,:verbose => true)
+        #FileUtils.cp_r(src,dest,:verbose => true)
+        FileUtils.cp_r(src,dest)
       end
-
-    end
-
-
-
-#
-    ### so we could actually edit everything here ... 
-    ### changing the workspace,namespace, vector styles here.
-
-    ## we would copy the files according to type ... 
-    ### while editing the xml. 
+  end
 
   end
 end
@@ -233,10 +252,12 @@ OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
   opts.on('-s', '--directory NAME', 'source dir to scan') { |v| options[:source_dir] = v }
   opts.on('-d', '--directory NAME', 'destination dir') { |v| options[:dest_dir] = v }
+  opts.on('-l', '--directory NAME', 'layer') { |v| options[:layer] = v }
 end.parse!
 
 
 begin_trace_from_layer_info( create_oid_mappings( options ), options ) 
+
 
 
 puts ""
