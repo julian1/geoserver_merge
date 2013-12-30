@@ -82,6 +82,9 @@ def trace_oid( oids, oid, depth, options, lst )
     elsif REXML::XPath.first( node, "/layer" )
     elsif REXML::XPath.first( node, "/featureType" )
     elsif REXML::XPath.first( node, "/namespace" )
+    elsif REXML::XPath.first( node, "/workspace" )
+    elsif REXML::XPath.first( node, "/coverage" )
+
     elsif REXML::XPath.first( node, "/dataStore" )
 #       puts "#{pad(depth)} *dataStore #{path}" 
 #       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/dataStore/name').text}"
@@ -133,8 +136,6 @@ def trace_oid( oids, oid, depth, options, lst )
         puts
       end
     
-    elsif REXML::XPath.first( node, "/workspace" )
-    elsif REXML::XPath.first( node, "/coverage" )
     elsif REXML::XPath.first( node, "/coverageStore" )
       puts "#{pad(depth)} *coverageStore #{path}" 
       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/coverageStore/name').text}"
