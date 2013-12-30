@@ -54,7 +54,7 @@ def create_oid_mappings( options)
 end
 
 
-def trace_oid( oids, oid, depth, options, files )
+def trace_oid( oids, oid, depth, options, files, other_files )
 
   # recursively trace out the objects 
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
@@ -89,7 +89,7 @@ def trace_oid( oids, oid, depth, options, files )
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
           # other files
-          files['others'] << fullpath
+          other_files << fullpath
         end
       end
 
@@ -103,7 +103,7 @@ def trace_oid( oids, oid, depth, options, files )
         # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
         abort( "missing file #{fullpath}") unless File.exists?( fullpath)
 
-        files['others'] << fullpath
+        other_files << fullpath
       end
     
     elsif REXML::XPath.first( node, "/coverageStore" )
@@ -116,7 +116,7 @@ def trace_oid( oids, oid, depth, options, files )
         if not x.empty? 
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-          files['others'] << fullpath
+          other_files << fullpath
         end
       end
 
@@ -127,7 +127,7 @@ def trace_oid( oids, oid, depth, options, files )
     # find the sub objects this doc refers to
     # and process them
     REXML::XPath.each( object[:xml], "/*/*/id" ) do |e|
-      trace_oid( oids, e.text , depth + 1, options, files )
+      trace_oid( oids, e.text , depth + 1, options, files, other_files )
     end
   end
 end
@@ -140,8 +140,9 @@ def begin_trace_from_layer_info( oids, options )
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
     next unless ( oid =~ /LayerInfoImpl.*/ )
-    files = { 'others' => [] } 
-    trace_oid( oids, oid, 0, options, files )
+    files = { } 
+    other_files = []
+    trace_oid( oids, oid, 0, options, files, other_files )
 
     puts "--------------"
 
@@ -164,11 +165,18 @@ def begin_trace_from_layer_info( oids, options )
 
 #    print "layer file -> #{files['layer'][:path]}"
 
+# think we want to carry them in separate  
 
     files.keys.each() do |key|
-      next if key == 'others'
       puts "#{key}->#{files[key][:path]}"
     end
+
+    other_files.each() do |path|
+      puts "#{path}"
+    end
+
+
+
 #
     ### so we could actually edit everything here ... 
     ### changing the workspace,namespace, vector styles here.
