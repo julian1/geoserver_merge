@@ -1,16 +1,12 @@
 #!/usr/bin/ruby
 
-# Script to trace out the references of a geoserver configuration directory 
-# and output useful configuration data
+# copy geoserver configuration from one directory to another, with support to 
+# change a few important configuration options
 
-# This ought to make it easy to copy all needed files in one operation. 
-# And to patch-up workspace and namespace references and jndi entries etc 
 
 require 'rexml/document'
 require 'rexml/xpath'
 require 'find'
-
-
 require 'optparse'
 require 'yaml'
 require 'fileutils'
@@ -170,64 +166,24 @@ def begin_trace_from_layer_info( oids, options )
 
     puts "--------------"
 
-    puts "name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}, "
-    puts "num files #{files.length}, "
+    puts "layer name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}    files: #{files.length}"
 
-    # we want to consolidate this logic
 
-#     # identify whether it's a jndi type 
-#     if files['dataStore'] 
-#       dataStoretype = REXML::XPath.first( files['dataStore'][:xml], '/dataStore/type')
-#       if dataStoretype and dataStoretype.text == 'PostGIS (JNDI)'
-#         print "jndi type "
-#       else
-#         print "**NON jndi type "
-#       end
-#     end
-#     puts
-# 
-
-    ## patch the files and maybe copy them...
-    ## so we can just copy the files ...
-
-    # we really need to avoid overwriting ...  an existing file ...
-        # because it will be the correct imos namespace etc.
-
+    # process the main xml files
     files.keys.each() do |key|
-
-      ### so for some files we would avoid them
-
 
       src = files[key][:path]
       node = files[key][:xml]
-
-      ### should perhaps pass these as explicit argumnets
-      ### one -j for new jndi entry, -n for namespace id, -w for workspace id  etc 
-
-      ## patch up the datastore file
-#       if key == "dataStore"
-#         puts "whoot datastore"
-#         type = REXML::XPath.first( node, '/dataStore/type') 
-#         if type
-#           puts "type->#{type.text}"
-#         end
-#       end
-# 
-      ## we really don't care much about the specific file - b
-
-      ### ok, the problem is that we don't really want to copy the file if it already exists
-      ### even if we've modified ...
-
-
       dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
+
       # puts "#{key}->    #{src} -> #{dest}"
 
+      ## Ensure we never overwrite a file in the target directory
       if File.exists?( dest)
         puts "already exists #{dest}"
       else
 
-        ## depending on the file we want to modify it. 
-
+        # we make the conversion irrespective of the actual file names
 
         # patch jndi entry
         jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
@@ -236,14 +192,14 @@ def begin_trace_from_layer_info( oids, options )
           puts "jndi_reference now -> #{jndi.text}"
         end  
 
-        # change workspace
+        # change workspace ref
         workspace_id = REXML::XPath.first( node, "//workspace/id") 
         if workspace_id and options[:workspace_id]
           workspace_id.text = options[:workspace_id]
           puts "workspace_id now -> #{workspace_id.text}"
         end  
 
-        # change namespace
+        # change namespace ref
         namespace_id = REXML::XPath.first( node, "//namespace/id") 
         if namespace_id and options[:namespace_id]
           namespace_id.text = options[:namespace_id]
@@ -257,14 +213,9 @@ def begin_trace_from_layer_info( oids, options )
         File.open( dest,"w") do |data|
            data << node
         end
-
-
-#         puts "copying #{src} -> #{dest}"
-#         FileUtils.mkdir_p(File.dirname(dest ))    
-#         FileUtils.cp_r(src,dest)
       end
-
     end
+
 
     # other support files
     other_files.each() do |path|
@@ -276,7 +227,6 @@ def begin_trace_from_layer_info( oids, options )
       else
         puts "copying #{src} -> #{dest}"
         FileUtils.mkdir_p(File.dirname(dest ))    
-        #FileUtils.cp_r(src,dest,:verbose => true)
         FileUtils.cp_r(src,dest)
       end
   end
@@ -286,17 +236,13 @@ end
 
 
 
-### alright we should be passing the formatting or operation that we
-### want to perform into the recursion.
-
-
 
 options = {}
 
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
-  opts.on('-s', '--directory NAME', 'source dir to scan') { |v| options[:source_dir] = v }
-  opts.on('-d', '--directory NAME', 'destination dir') { |v| options[:dest_dir] = v }
+  opts.on('-s', '--directory NAME', 'source dir') { |v| options[:source_dir] = v }
+  opts.on('-d', '--directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
   opts.on('-l', '--directory NAME', 'layer') { |v| options[:layer] = v }
   opts.on('-j', '--directory NAME', 'jndi ref') { |v| options[:jndi_reference] = v }
   opts.on('-w', '--directory NAME', 'workspace id') { |v| options[:workspace_id] = v }
@@ -306,7 +252,4 @@ end.parse!
 
 begin_trace_from_layer_info( create_oid_mappings( options ), options ) 
 
-
-
-puts ""
 
