@@ -3,9 +3,21 @@
 # copy geoserver configuration from one directory to another, with support to 
 # change a few important configuration options
 
-# DONE we are missing ftls - in the top and sub-level directories. 
-# TODO - 
-# rather than having expl
+
+# print all layers 
+# ./merge_geoserver_config.rb  -p -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/
+#
+# print layer 'JBmeteorological_data'
+# ./merge_geoserver_config.rb  -p -l JBmeteorological_data -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ 
+#
+# merge layer srs_occ into tmp
+# ./merge_geoserver_config.rb -l srs_occ  -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
+#
+# merge layer srs_occ into tmp changing jndi reference
+# ./merge_geoserver_config.rb -l srs_occ -j java:comp/env/jdbc/legacy    -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
+#
+
+# TODO - perhaps ability to change schema
 
 require 'rexml/document'
 require 'rexml/xpath'
@@ -179,13 +191,57 @@ def begin_trace_oids( oids, options )
 end
 
 
+def print_layer( options, files, other_files )
+
+  # dump layer useful layer info to stdout
+
+  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
+  print "#{name.text}" if name
+
+  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
+  print ", ns->#{namespace.text}" if namespace
+
+  workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
+  print ", ws->#{workspace.text}" if workspace
+
+  if files['style'][:xml]
+    node = files['style'][:xml]
+    style = REXML::XPath.first( node, '/style/name')
+    style_file = REXML::XPath.first( node, "/style/filename" )
+    print ", style->#{style.text}" if style
+    print ", stylefile->#{style_file.text}" if style_file
+  end
+
+  if files['dataStore']
+    node = files['dataStore'][:xml]
+
+    jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+    print ", jndiref->#{jndi.text}" if jndi
+
+    schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
+    print ", schema->#{schema.text}" if schema
+
+    url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
+    print ", url->#{url.text}" if url
+  end
+
+  if files['coverageStore']
+    node = files['coverageStore'][:xml]
+
+    url = REXML::XPath.first( node, "/coverageStore/url" )
+    print ", coverage_url->#{url.text}" if url
+  end
+
+  print ", files: #{files.length} others: #{other_files.length}"
+  puts
+end
+
+
 
 def copy_layer( options, files, other_files )
 
   puts "--------------"
-
-  puts "layer name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}    files: #{files.length} others: #{other_files.length}"
-
+  print_layer( options, files, other_files )
 
   # loop the main xml files associated with layer
   files.keys.each() do |key|
@@ -255,90 +311,32 @@ end
 
 
 
-def dump_layer( options, files, other_files )
-
-  # dump layer useful layer info to stdout
-
-
-  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
-  print "#{name.text}" if name
-
-  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
-  print ", ns->#{namespace.text}" if namespace
-
-  workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
-  print ", ws->#{workspace.text}" if workspace
-
-
-
-#     elsif REXML::XPath.first( node, "/workspace" )
-#       puts "#{pad(depth)} *workspace #{path}" 
-#       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/workspace/name').text}"
-# 
-
-
-  if files['dataStore']
-    node = files['dataStore'][:xml]
-
-    jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-    print ", jndiref->#{jndi.text}" if jndi
-
-    schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
-    print ", schema->#{schema.text}" if schema
-
-    url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
-    print ", url->#{url.text}" if url
-  end
-
-  if files['coverageStore']
-    node = files['coverageStore'][:xml]
-
-    url = REXML::XPath.first( node, "/coverageStore/url" )
-    print ", coverage_url->#{url.text}" if url
-  end
-
-
-
-
-
-  print ", files: #{files.length} others: #{other_files.length}"
-
-  puts
-
-#   # loop the main xml files associated with layer
-#   files.keys.each() do |key|
-# 
-#     src = files[key][:path]
-#     node = files[key][:xml]
-# 
-#           # we make the conversion irrespective of the actual file names
-# 
-#       # patch jndi entry
-#  #     jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-# 
-#   end 
-# 
-end
-
-
 options = {}
 
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
-  opts.on('-s', '--directory NAME', 'source dir') { |v| options[:source_dir] = v }
-  opts.on('-d', '--directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
-  opts.on('-l', '--directory NAME', 'specific layer - otherwise all layers') { |v| options[:layer] = v }
-  opts.on('-j', '--directory NAME', 'jndi ref') { |v| options[:jndi_reference] = v }
-  opts.on('-w', '--directory NAME', 'workspace id') { |v| options[:workspace_id] = v }
-  opts.on('-n', '--directory NAME', 'namespace id') { |v| options[:namespace_id] = v }
+  opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
+  opts.on('-d', '--dest_directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
+  opts.on('-l', '--layer NAME', 'specific layer - otherwise all layers') { |v| options[:layer] = v }
+  opts.on('-j', '--jndirref NAME', 'change jndi ref') { |v| options[:jndi_reference] = v }
+  opts.on('-w', '--workspace NAME', 'change workspace id') { |v| options[:workspace_id] = v }
+  opts.on('-n', '--namespace NAME', 'change namespace id') { |v| options[:namespace_id] = v }
+
+# we want this thing to be a boolean ...
+  opts.on('-p', '', 'print to stdout') { |v| options[:print] = true }
 end.parse!
+
+
+puts "print -> #{options[:print]}"
 
 
 begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_files|
 
-  #copy_layer( options, files, other_files )
-  dump_layer( options, files, other_files )
-
+  if options[:print]
+    print_layer( options, files, other_files )
+  else
+    copy_layer( options, files, other_files )
+  end
 end 
 
 
