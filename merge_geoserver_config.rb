@@ -168,7 +168,7 @@ def begin_trace_from_layer_info( oids, options )
 
     puts "--------------"
 
-    puts "layer name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}    files: #{files.length}"
+    puts "layer name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}    files: #{files.length} others: #{other_files.length}"
 
 
     # process the main xml files
@@ -176,7 +176,9 @@ def begin_trace_from_layer_info( oids, options )
 
       src = files[key][:path]
       node = files[key][:xml]
-      dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
+      rel_src = relative_path( src, options[:source_dir] )
+
+      dest = options[:dest_dir] + rel_src
 
       # puts "#{key}->    #{src} -> #{dest}"
 
@@ -191,24 +193,24 @@ def begin_trace_from_layer_info( oids, options )
         jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
         if jndi and options[:jndi_reference]
           jndi.text = options[:jndi_reference]
-          puts "jndi_reference now -> #{jndi.text}"
+          puts "change jndi_reference -> #{jndi.text}"
         end  
 
         # change workspace ref
         workspace_id = REXML::XPath.first( node, "//workspace/id") 
         if workspace_id and options[:workspace_id]
           workspace_id.text = options[:workspace_id]
-          puts "workspace_id now -> #{workspace_id.text}"
+          puts "change workspace_id -> #{workspace_id.text}"
         end  
 
         # change namespace ref
         namespace_id = REXML::XPath.first( node, "//namespace/id") 
         if namespace_id and options[:namespace_id]
           namespace_id.text = options[:namespace_id]
-          puts "namespace_id now -> #{namespace_id.text}"
+          puts "change namespace_id -> #{namespace_id.text}"
         end  
 
-        puts "writing new xml #{src} -> #{dest}"
+        puts "writing new xml #{rel_src} -> #{dest}"
 
         FileUtils.mkdir_p(File.dirname(dest ))    
 
