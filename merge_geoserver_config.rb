@@ -257,6 +257,7 @@ end
 
 def dump_layer( options, files, other_files )
 
+  # dump layer useful layer info to stdout
 
   puts "files: #{files.length} others: #{other_files.length}"
 
@@ -264,7 +265,10 @@ def dump_layer( options, files, other_files )
   puts "name #{name.text}" if name
 
   jndi = REXML::XPath.first( files['dataStore'][:xml], "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-  puts "jndi ref #{jndi.text}" if jndi
+  puts "jndiref #{jndi.text}" if jndi
+
+  schema = REXML::XPath.first( files['dataStore'][:xml], "/dataStore/connectionParameters/entry[@key='schema']") 
+  puts "schema #{schema.text}" if schema
 
 
 #   # loop the main xml files associated with layer
