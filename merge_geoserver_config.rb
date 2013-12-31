@@ -5,7 +5,7 @@
 
 # DONE we are missing ftls - in the top and sub-level directories. 
 # TODO - 
-
+# rather than having expl
 
 require 'rexml/document'
 require 'rexml/xpath'
@@ -149,7 +149,7 @@ end
 
 ## we really need to factor this into a block
 
-def begin_trace_from_layer_info( oids, options )
+def begin_trace_oids( oids, options )
 
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
@@ -180,20 +180,19 @@ end
 
 
 
-def copy_stuff( options, files, other_files )
+def copy_layer( options, files, other_files )
 
   puts "--------------"
 
   puts "layer name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}    files: #{files.length} others: #{other_files.length}"
 
 
-  # process the main xml files
+  # loop the main xml files associated with layer
   files.keys.each() do |key|
 
     src = files[key][:path]
     node = files[key][:xml]
     rel_src = relative_path( src, options[:source_dir] )
-
     dest = options[:dest_dir] + rel_src
 
     # puts "#{key}->    #{src} -> #{dest}"
@@ -226,7 +225,7 @@ def copy_stuff( options, files, other_files )
         puts "change namespace_id -> #{namespace_id.text}"
       end  
 
-      puts "writing new xml #{rel_src} -> #{dest}"
+      puts "writing xml #{rel_src} -> #{dest}"
 
       FileUtils.mkdir_p(File.dirname(dest ))    
 
@@ -237,7 +236,7 @@ def copy_stuff( options, files, other_files )
   end
 
 
-  # other support files
+  # copy other support files
   other_files.each() do |path|
     src = path 
     rel_src = relative_path( src, options[:source_dir] )
@@ -254,6 +253,36 @@ def copy_stuff( options, files, other_files )
 end
 
 
+
+
+def dump_layer( options, files, other_files )
+
+
+  puts "files: #{files.length} others: #{other_files.length}"
+
+  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
+  puts "name #{name.text}" if name
+
+  jndi = REXML::XPath.first( files['dataStore'][:xml], "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+  puts "jndi ref #{jndi.text}" if jndi
+
+
+#   # loop the main xml files associated with layer
+#   files.keys.each() do |key|
+# 
+#     src = files[key][:path]
+#     node = files[key][:xml]
+# 
+#           # we make the conversion irrespective of the actual file names
+# 
+#       # patch jndi entry
+#  #     jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+# 
+#   end 
+# 
+end
+
+
 options = {}
 
 OptionParser.new do |opts|
@@ -267,9 +296,10 @@ OptionParser.new do |opts|
 end.parse!
 
 
-begin_trace_from_layer_info( create_oid_mappings( options ), options ) do  |files, other_files|
+begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_files|
 
-  copy_stuff( options, files, other_files )
+  #copy_layer( options, files, other_files )
+  dump_layer( options, files, other_files )
 
 end 
 
