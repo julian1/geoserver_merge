@@ -3,7 +3,8 @@
 # copy geoserver configuration from one directory to another, with support to 
 # change a few important configuration options
 
-# TODO we are missing ftls - in the top and sub-level directories. 
+# DONE we are missing ftls - in the top and sub-level directories. 
+# TODO - 
 
 
 require 'rexml/document'
@@ -65,10 +66,6 @@ def trace_oid( oids, oid, depth, options, files, other_files )
 
     if REXML::XPath.first( node, "/GeoServerTileLayer" )
       files['GeoServerTileLayer'] = object 
-    elsif REXML::XPath.first( node, "/layer" )
-      files['layer'] = object 
-      # check for a content ftl file...
-
     elsif REXML::XPath.first( node, "/featureType" )
       files['featureType'] = object 
     elsif REXML::XPath.first( node, "/namespace" )
@@ -77,6 +74,15 @@ def trace_oid( oids, oid, depth, options, files, other_files )
       files['workspace'] = object 
     elsif REXML::XPath.first( node, "/coverage" )
       files['coverage'] = object 
+
+    elsif REXML::XPath.first( node, "/layer" )
+      files['layer'] = object 
+
+      # pick up ftl files in this dir 
+      Dir["#{File.dirname( path)}/*.ftl"].each do |fullpath|
+          other_files << fullpath
+      end
+
     elsif REXML::XPath.first( node, "/dataStore" )
       files['dataStore'] = object 
  
@@ -102,7 +108,6 @@ def trace_oid( oids, oid, depth, options, files, other_files )
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
         # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
         abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-
         other_files << fullpath
       end
     
@@ -224,12 +229,13 @@ def begin_trace_from_layer_info( oids, options )
     # other support files
     other_files.each() do |path|
       src = path 
-      dest = options[:dest_dir] + relative_path( src, options[:source_dir] )
+      rel_src = relative_path( src, options[:source_dir] )
+      dest = options[:dest_dir] + rel_src
 
       if File.exists?( dest)
         puts "already exists #{dest}"
       else
-        puts "copying #{src} -> #{dest}"
+        puts "copying #{rel_src} -> #{dest}"
         FileUtils.mkdir_p(File.dirname(dest ))    
         FileUtils.cp_r(src,dest)
       end
