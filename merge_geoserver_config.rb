@@ -263,11 +263,43 @@ def dump_layer( options, files, other_files )
   name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
   print "#{name.text}" if name
 
-  jndi = REXML::XPath.first( files['dataStore'][:xml], "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-  print ", jndi->#{jndi.text}" if jndi
+  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
+  print ", ns->#{namespace.text}" if namespace
 
-  schema = REXML::XPath.first( files['dataStore'][:xml], "/dataStore/connectionParameters/entry[@key='schema']") 
-  print ", schema->#{schema.text}" if schema
+  workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
+  print ", ws->#{workspace.text}" if workspace
+
+
+
+#     elsif REXML::XPath.first( node, "/workspace" )
+#       puts "#{pad(depth)} *workspace #{path}" 
+#       puts "#{pad(depth+1)} +name->#{REXML::XPath.first( node, '/workspace/name').text}"
+# 
+
+
+  if files['dataStore']
+    node = files['dataStore'][:xml]
+
+    jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+    print ", jndiref->#{jndi.text}" if jndi
+
+    schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
+    print ", schema->#{schema.text}" if schema
+
+    url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
+    print ", url->#{url.text}" if url
+  end
+
+  if files['coverageStore']
+    node = files['coverageStore'][:xml]
+
+    url = REXML::XPath.first( node, "/coverageStore/url" )
+    print ", coverage_url->#{url.text}" if url
+  end
+
+
+
+
 
   print ", files: #{files.length} others: #{other_files.length}"
 
