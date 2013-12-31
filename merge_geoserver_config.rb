@@ -147,6 +147,8 @@ def relative_path( path, dir )
 end
 
 
+## we really need to factor this into a block
+
 def begin_trace_from_layer_info( oids, options )
 
   # start tracing from the layer root keys
@@ -165,86 +167,91 @@ def begin_trace_from_layer_info( oids, options )
       next unless found
     end
 
-
     # do the scan
     files = {} 
     other_files = []
     trace_oid( oids, oid, 0, options, files, other_files )
 
-    puts "--------------"
 
-    puts "layer name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}    files: #{files.length} others: #{other_files.length}"
-
-
-    # process the main xml files
-    files.keys.each() do |key|
-
-      src = files[key][:path]
-      node = files[key][:xml]
-      rel_src = relative_path( src, options[:source_dir] )
-
-      dest = options[:dest_dir] + rel_src
-
-      # puts "#{key}->    #{src} -> #{dest}"
-
-      ## Ensure we never overwrite a file in the target directory
-      if File.exists?( dest)
-        puts "already exists #{dest}"
-      else
-
-        # we make the conversion irrespective of the actual file names
-
-        # patch jndi entry
-        jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
-        if jndi and options[:jndi_reference]
-          jndi.text = options[:jndi_reference]
-          puts "change jndi_reference -> #{jndi.text}"
-        end  
-
-        # change workspace ref
-        workspace_id = REXML::XPath.first( node, "//workspace/id") 
-        if workspace_id and options[:workspace_id]
-          workspace_id.text = options[:workspace_id]
-          puts "change workspace_id -> #{workspace_id.text}"
-        end  
-
-        # change namespace ref
-        namespace_id = REXML::XPath.first( node, "//namespace/id") 
-        if namespace_id and options[:namespace_id]
-          namespace_id.text = options[:namespace_id]
-          puts "change namespace_id -> #{namespace_id.text}"
-        end  
-
-        puts "writing new xml #{rel_src} -> #{dest}"
-
-        FileUtils.mkdir_p(File.dirname(dest ))    
-
-        File.open( dest,"w") do |data|
-           data << node
-        end
-      end
-    end
-
-
-    # other support files
-    other_files.each() do |path|
-      src = path 
-      rel_src = relative_path( src, options[:source_dir] )
-      dest = options[:dest_dir] + rel_src
-
-      if File.exists?( dest)
-        puts "already exists #{dest}"
-      else
-        puts "copying #{rel_src} -> #{dest}"
-        FileUtils.mkdir_p(File.dirname(dest ))    
-        FileUtils.cp_r(src,dest)
-      end
-  end
+    yield files, other_files
 
   end
 end
 
 
+
+def copy_stuff( options, files, other_files )
+
+  puts "--------------"
+
+  puts "layer name-> #{REXML::XPath.first( files['layer'][:xml], '/layer/name').text}    files: #{files.length} others: #{other_files.length}"
+
+
+  # process the main xml files
+  files.keys.each() do |key|
+
+    src = files[key][:path]
+    node = files[key][:xml]
+    rel_src = relative_path( src, options[:source_dir] )
+
+    dest = options[:dest_dir] + rel_src
+
+    # puts "#{key}->    #{src} -> #{dest}"
+
+    ## Ensure we never overwrite a file in the target directory
+    if File.exists?( dest)
+      puts "already exists #{dest}"
+    else
+
+      # we make the conversion irrespective of the actual file names
+
+      # patch jndi entry
+      jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+      if jndi and options[:jndi_reference]
+        jndi.text = options[:jndi_reference]
+        puts "change jndi_reference -> #{jndi.text}"
+      end  
+
+      # change workspace ref
+      workspace_id = REXML::XPath.first( node, "//workspace/id") 
+      if workspace_id and options[:workspace_id]
+        workspace_id.text = options[:workspace_id]
+        puts "change workspace_id -> #{workspace_id.text}"
+      end  
+
+      # change namespace ref
+      namespace_id = REXML::XPath.first( node, "//namespace/id") 
+      if namespace_id and options[:namespace_id]
+        namespace_id.text = options[:namespace_id]
+        puts "change namespace_id -> #{namespace_id.text}"
+      end  
+
+      puts "writing new xml #{rel_src} -> #{dest}"
+
+      FileUtils.mkdir_p(File.dirname(dest ))    
+
+      File.open( dest,"w") do |data|
+         data << node
+      end
+    end
+  end
+
+
+  # other support files
+  other_files.each() do |path|
+    src = path 
+    rel_src = relative_path( src, options[:source_dir] )
+    dest = options[:dest_dir] + rel_src
+
+    if File.exists?( dest)
+      puts "already exists #{dest}"
+    else
+      puts "copying #{rel_src} -> #{dest}"
+      FileUtils.mkdir_p(File.dirname(dest ))    
+      FileUtils.cp_r(src,dest)
+    end
+  end
+end
 
 
 options = {}
@@ -260,6 +267,10 @@ OptionParser.new do |opts|
 end.parse!
 
 
-begin_trace_from_layer_info( create_oid_mappings( options ), options ) 
+begin_trace_from_layer_info( create_oid_mappings( options ), options ) do  |files, other_files|
+
+  copy_stuff( options, files, other_files )
+
+end 
 
 
