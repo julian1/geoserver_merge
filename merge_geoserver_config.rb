@@ -168,15 +168,21 @@ def trace_oid( oids, oid, depth, options, files, other_files )
 
         node = REXML::Document.new( File.new( fullpath )) 
 
-        #REXML::XPath.each( node, "//OnlineResource[@href]" ) do |e|
-
-        # REXML::XPath.each( node, "//OnlineResource@href" ) do |e|
-        #REXML::XPath.each( node, "xs:string(//OnlineResource@href)" ) do |e|
         REXML::XPath.each( node, "//OnlineResource" ) do |e|
 
-        	puts "******* here0 #{e.attributes["href"]} " 
-          puts "******* here1  #{e}"
-          puts "******* here2 #{e.text}"
+        	puts "******* here0 #{e.attributes["xlink:href"]} " 
+
+#  if not x.empty? 
+#   other files
+#  end
+
+
+          fullpath = "#{options[:source_dir]}/styles/#{e.attributes["xlink:href"]}"
+          abort( "missing file #{fullpath}") unless File.exists?( fullpath)
+        	puts "adding new resource #{fullpath}" 
+          other_files << fullpath
+
+
         end
 
 
