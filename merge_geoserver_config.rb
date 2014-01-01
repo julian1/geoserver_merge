@@ -1,9 +1,9 @@
 #!/usr/bin/ruby
 
-# copy geoserver configuration from one directory to another, with support to 
-# change a few important configuration options
+# tool to print, merge and patch geoserver layers
 
-
+# Examples:
+#
 # print all layers 
 # ./merge_geoserver_config.rb  -p -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/
 #
@@ -16,8 +16,19 @@
 # merge layer srs_occ into tmp changing jndi reference
 # ./merge_geoserver_config.rb -l srs_occ -j java:comp/env/jdbc/legacy    -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
 #
+#
+# ./merge_geoserver_config.rb  -l srs_occ  -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d ~/imos/projects/chef/geoserver-123/ -j java:comp/env/jdbc/legacy_read -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff
+#
+# verify
+#./merge_geoserver_config.rb -p  -l srs_occ  -s  ~/imos/projects/chef/geoserver-123/ 
 
-# TODO - perhaps ability to change schema
+# Note this doesn't copy the workspace level ftl
+
+# TODO 
+# perhaps ability to change schema
+# perhaps, should read the target namespace and target workspaces and use those entries by default.
+
+# ok, we got comthing working 
 
 require 'rexml/document'
 require 'rexml/xpath'
@@ -121,6 +132,55 @@ def trace_oid( oids, oid, depth, options, files, other_files )
         # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
         abort( "missing file #{fullpath}") unless File.exists?( fullpath)
         other_files << fullpath
+
+        ### we have to pick up any Online resources in the style file, 
+
+#       ExternalGraphic>
+#           <OnlineResource xlink:type="simple" xlink:href="argo_float.png" />
+#           <Format>im
+# 
+
+# 
+#       <ExternalGraphic>
+#          <OnlineResource xlink:type="simple" xlink:href="SRS_OCC.png" />
+#          <Format>image/png</Format>
+#       </ExternalGraphic>
+#
+
+# <StyledLayerDescriptor version="1.0.0"
+#   <PointSymbolizer>
+#      <Graphic>
+#        <ExternalGraphic>
+#           <OnlineResource xlink:type="simple" xlink:href="argo_float.png" />
+# 
+# StyledLayerDescriptor/PointSymbolizer/Graphic/ExternalGraphic/OnlineResource
+        
+#       oid = REXML::XPath.first( xml, "/*/id" )
+#	REXML::XPath.each( node, "/StyledLayerDescriptor/PointSymbolizer/Graphic/ExternalGraphic/OnlineResource" ) do |e|
+# 	REXML::XPath.each( node, "//OnlineResource" ) do |e|
+#	url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
+
+
+#     <entry key="schema">srs</entry>
+#     <OnlineResource  href="SRS_OCC.png" />
+
+        puts "**** here **** #{fullpath}"
+
+        node = REXML::Document.new( File.new( fullpath )) 
+
+        #REXML::XPath.each( node, "//OnlineResource[@href]" ) do |e|
+
+        # REXML::XPath.each( node, "//OnlineResource@href" ) do |e|
+        #REXML::XPath.each( node, "xs:string(//OnlineResource@href)" ) do |e|
+        REXML::XPath.each( node, "//OnlineResource" ) do |e|
+
+        	puts "******* here0 #{e.attributes["href"]} " 
+          puts "******* here1  #{e}"
+          puts "******* here2 #{e.text}"
+        end
+
+
+
       end
     
     elsif REXML::XPath.first( node, "/coverageStore" )
@@ -267,14 +327,14 @@ def copy_layer( options, files, other_files )
         puts "change jndi_reference -> #{jndi.text}"
       end  
 
-      # change workspace ref
+      # patch workspace ref
       workspace_id = REXML::XPath.first( node, "//workspace/id") 
       if workspace_id and options[:workspace_id]
         workspace_id.text = options[:workspace_id]
         puts "change workspace_id -> #{workspace_id.text}"
       end  
 
-      # change namespace ref
+      # patch namespace ref
       namespace_id = REXML::XPath.first( node, "//namespace/id") 
       if namespace_id and options[:namespace_id]
         namespace_id.text = options[:namespace_id]
@@ -326,8 +386,6 @@ OptionParser.new do |opts|
   opts.on('-p', '', 'print to stdout') { |v| options[:print] = true }
 end.parse!
 
-
-puts "print -> #{options[:print]}"
 
 
 begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_files|
