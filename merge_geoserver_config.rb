@@ -20,8 +20,8 @@
 # ./merge_geoserver_config.rb  -l srs_occ  -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d ~/imos/projects/chef/geoserver-123/ -j java:comp/env/jdbc/legacy_read -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff
 #
 # verify
-#./merge_geoserver_config.rb -p  -l srs_occ  -s  ~/imos/projects/chef/geoserver-123/ 
-
+#./merge_geoserver_config.rb -p -l srs_occ  -s  ~/imos/projects/chef/geoserver-123/ 
+#
 # Note this doesn't copy the workspace level ftl
 
 # TODO 
@@ -37,6 +37,14 @@ require 'optparse'
 require 'yaml'
 require 'fileutils'
 
+
+def relative_path( path, dir )
+  # subtract dir from path to give relative path
+  # TODO must be a better way!
+  path1 = File.expand_path( path)
+  dir = File.expand_path( dir )
+  path1[dir.length, 1000000 ]
+end
 
 
 def create_oid_mappings( options)
@@ -70,8 +78,11 @@ def create_oid_mappings( options)
     if oids[ oid.text].nil? 
       oids[ oid.text ] = [ { xml: xml, path: path } ]
     else
+
+      path2 = oids[ oid.text ].first[:path] 
+      puts "duplicate object id #{relative_path(path, options[:source_dir])} (#{relative_path(path2, options[:source_dir])})" 
+
       oids[ oid.text ] << { xml: xml, path: path }
-      puts "duplicate object id #{path}   (#{oids[ oid.text ].first[:path]  })" 
     end
   end
   oids
@@ -133,60 +144,17 @@ def trace_oid( oids, oid, depth, options, files, other_files )
         abort( "missing file #{fullpath}") unless File.exists?( fullpath)
         other_files << fullpath
 
-        ### we have to pick up any Online resources in the style file, 
-
-#       ExternalGraphic>
-#           <OnlineResource xlink:type="simple" xlink:href="argo_float.png" />
-#           <Format>im
-# 
-
-# 
-#       <ExternalGraphic>
-#          <OnlineResource xlink:type="simple" xlink:href="SRS_OCC.png" />
-#          <Format>image/png</Format>
-#       </ExternalGraphic>
-#
-
-# <StyledLayerDescriptor version="1.0.0"
-#   <PointSymbolizer>
-#      <Graphic>
-#        <ExternalGraphic>
-#           <OnlineResource xlink:type="simple" xlink:href="argo_float.png" />
-# 
-# StyledLayerDescriptor/PointSymbolizer/Graphic/ExternalGraphic/OnlineResource
-        
-#       oid = REXML::XPath.first( xml, "/*/id" )
-#	REXML::XPath.each( node, "/StyledLayerDescriptor/PointSymbolizer/Graphic/ExternalGraphic/OnlineResource" ) do |e|
-# 	REXML::XPath.each( node, "//OnlineResource" ) do |e|
-#	url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
-
-
-#     <entry key="schema">srs</entry>
-#     <OnlineResource  href="SRS_OCC.png" />
-
-        puts "**** here **** #{fullpath}"
+        # we have to pick up any other resources used by the sld
 
         node = REXML::Document.new( File.new( fullpath )) 
 
         REXML::XPath.each( node, "//OnlineResource" ) do |e|
-
-        	puts "******* here0 #{e.attributes["xlink:href"]} " 
-
-#  if not x.empty? 
-#   other files
-#  end
-
-
-          fullpath = "#{options[:source_dir]}/styles/#{e.attributes["xlink:href"]}"
+          resource_file = e.attributes["xlink:href"]
+          fullpath = "#{options[:source_dir]}/styles/#{resource_file}"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
         	puts "adding new resource #{fullpath}" 
           other_files << fullpath
-
-
         end
-
-
-
       end
     
     elsif REXML::XPath.first( node, "/coverageStore" )
@@ -216,13 +184,6 @@ def trace_oid( oids, oid, depth, options, files, other_files )
 end
 
 
-def relative_path( path, dir )
-  # subtract dir from path to give relative path
-  # TODO must be a better way!
-  path1 = File.expand_path( path)
-  dir = File.expand_path( dir )
-  path1[dir.length, 1000000 ]
-end
 
 
 ## we really need to factor this into a block
