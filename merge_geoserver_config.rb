@@ -25,6 +25,7 @@
 # Note this doesn't copy the workspace level ftl
 
 # TODO 
+# set the namespace and workspace from the destination directory 
 # perhaps ability to change schema
 # perhaps, should read the target namespace and target workspaces and use those entries by default.
 
@@ -144,15 +145,14 @@ def trace_oid( oids, oid, depth, options, files, other_files )
         abort( "missing file #{fullpath}") unless File.exists?( fullpath)
         other_files << fullpath
 
-        # we have to pick up any other resources used by the sld
-
+        # we also need to pick up any other resources used by the sld
         node = REXML::Document.new( File.new( fullpath )) 
 
         REXML::XPath.each( node, "//OnlineResource" ) do |e|
           resource_file = e.attributes["xlink:href"]
           fullpath = "#{options[:source_dir]}/styles/#{resource_file}"
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
-        	puts "adding new resource #{fullpath}" 
+        	# puts "adding new resource #{fullpath}" 
           other_files << fullpath
         end
       end
