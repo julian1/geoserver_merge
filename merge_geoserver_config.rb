@@ -16,11 +16,11 @@
 # merge layer srs_occ into tmp changing jndi reference
 # ./merge_geoserver_config.rb -l srs_occ -j java:comp/env/jdbc/legacy    -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
 #
-#
-# ./merge_geoserver_config.rb  -l srs_occ  -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d ~/imos/projects/chef/geoserver-123/ -j java:comp/env/jdbc/legacy_read -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff
-#
-# verify
-#./merge_geoserver_config.rb -p -l srs_occ  -s  ~/imos/projects/chef/geoserver-123/ 
+# SRC=~/imos/services/imos_geoserver_config/geoserver.imos.org.au_data_dir/
+# DEST=/home/meteo/imos/projects/chef/geoserver-123/
+# LAYER=soop_sst_1min_vw
+# ./merge_geoserver_config.rb -p -l $LAYER  -s $SRC
+# ./merge_geoserver_config.rb -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff  
 #
 # Note this doesn't copy the workspace level ftl
 
