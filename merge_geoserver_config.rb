@@ -131,6 +131,16 @@ def trace_oid( oids, oid, depth, options, files, other_files )
           abort( "missing file #{fullpath}") unless File.exists?( fullpath)
           # other files
           other_files << fullpath
+
+          # pull any other shapefiles that match eg. .shx, .dbf
+          if File.extname( fullpath) == '.shp'
+            fname = fullpath.chomp(File.extname(fullpath ) ) 
+            # puts "***** it's a shapefile  basename #{fname} "
+            Dir["#{fname}*"].each do |shapefile|
+              other_files << shapefile
+            end
+          end	
+
         end
       end
 
