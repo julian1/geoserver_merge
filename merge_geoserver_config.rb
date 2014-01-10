@@ -48,6 +48,12 @@ def relative_path( path, dir )
 end
 
 
+def maybe_abort( msg, options )
+  abort( msg) unless options[:print]
+  puts msg
+end
+
+
 def create_oid_mappings( options)
 
   # scan the directory and create a set of mappings from object references
@@ -128,7 +134,7 @@ def trace_oid( oids, oid, depth, options, files, other_files )
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
-          abort( "missing file #{fullpath}") unless File.exists?( fullpath)
+          maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
 
           # glob other shapefiles that match the basename  eg. .shx, .dbf
           if File.extname( fullpath) == '.shp'
@@ -154,7 +160,7 @@ def trace_oid( oids, oid, depth, options, files, other_files )
       if style_file
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
         # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
-        abort( "missing file #{fullpath}") unless File.exists?( fullpath)
+        maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
         other_files << fullpath
 
         # we also need to pick up any other resources used by the sld
@@ -163,7 +169,7 @@ def trace_oid( oids, oid, depth, options, files, other_files )
         REXML::XPath.each( node, "//OnlineResource" ) do |e|
           resource_file = e.attributes["xlink:href"]
           fullpath = "#{options[:source_dir]}/styles/#{resource_file}"
-          abort( "missing file #{fullpath}") unless File.exists?( fullpath)
+          maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
         	# puts "adding new resource #{fullpath}" 
           other_files << fullpath
         end
@@ -178,13 +184,13 @@ def trace_oid( oids, oid, depth, options, files, other_files )
         x = url.text.scan( /file:(.*)/ ) 
         if not x.empty? 
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
-          abort( "missing file #{fullpath}") unless File.exists?( fullpath)
+          maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
           other_files << fullpath
         end
       end
 
     else 
-        abort( "#{pad(depth+1)} +UNKNOWN element #{path}"  )
+        maybe_abort( "ERROR: #{pad(depth+1)} +UNKNOWN element #{path}", options)
     end
 
     # find the sub objects this doc refers to
@@ -248,7 +254,7 @@ def print_layer( options, files, other_files )
     style = REXML::XPath.first( node, '/style/name')
     style_file = REXML::XPath.first( node, "/style/filename" )
     print ", style->#{style.text}" if style
-    print ", stylefile->#{style_file.text}" if style_file
+#    print ", stylefile->#{style_file.text}" if style_file
   end
 
   if files['dataStore']
@@ -349,6 +355,51 @@ end
 
 
 
+def create_monitoring_databag( options, files, other_files )
+
+  # dump layer useful layer info to stdout
+
+  # it would probably be good to sort this alphabetically. 
+  
+  # and it would be nice to use join() to generate the comma list 
+  # 
+
+  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
+  abort( "missing namespace" ) unless namespace
+
+  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
+  abort( "missing name" ) unless name
+
+  # Just use EOS to create the string, then use join()
+ 
+  pad = "    " 
+
+  bag = <<-EOS
+      #{pad}{
+      #{pad}"namespace": "#{namespace.text}"
+      #{pad}"name": "#{name.text}"
+      #{pad}"type": "#{ /_data$/.match( name.text ) ? "wfs" : "wms" }" 
+      #{pad}},
+  EOS
+
+  puts bag
+
+# we could spec
+
+ 
+#   if files['coverageStore']
+#     node = files['coverageStore'][:xml]
+# 
+#     url = REXML::XPath.first( node, "/coverageStore/url" )
+#     print ", coverage_url->#{url.text}" if url
+#   end
+# 
+
+
+end
+
+
+
 
 options = {}
 
@@ -363,6 +414,7 @@ OptionParser.new do |opts|
 
 # we want this thing to be a boolean ...
   opts.on('-p', '', 'print to stdout') { |v| options[:print] = true }
+  opts.on('-b', '', 'create databag to stdout') { |v| options[:bag] = true }
 end.parse!
 
 
@@ -371,6 +423,8 @@ begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_fi
 
   if options[:print]
     print_layer( options, files, other_files )
+  elsif options[:bag]
+    create_monitoring_databag( options, files, other_files )
   else
     copy_layer( options, files, other_files )
   end
