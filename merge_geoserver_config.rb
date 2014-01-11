@@ -355,36 +355,31 @@ end
 
 
 
-def create_monitoring_databag( options, files, other_files )
+def create_monitoring_databag( options, layers )
 
-  # dump layer useful layer info to stdout
+  layers.sort! do |a,b| 
+    # put wms before wfs else sort by name
+    if a[:type] != b[:type] 
+      b[:type] <=> a[:type] 
+    else
+      a[:name].downcase <=> b[:name].downcase 
+    end
+  end
 
-  # it would probably be good to sort this alphabetically. 
 
-  # and it would be nice to use join() to generate the comma list 
-  # 
+  layers.each() do |layer|
+    pad = "    " 
+    bag = <<-EOS
+        #{pad}{
+        #{pad}"namespace": "#{layer[:namespace]}"
+        #{pad}"name": "#{layer[:name]}"
+        #{pad}"type": "#{layer[:type]}" 
+        #{pad}},
+    EOS
 
-  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
-  abort( "missing namespace" ) unless namespace
+    puts bag
+  end
 
-  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
-  abort( "missing name" ) unless name
-
-  type = /_data$/.match( name.text ) ? "wfs" : "wms"
-
-  # Just use EOS to create the string, then use join()
- 
-  pad = "    " 
-
-  bag = <<-EOS
-      #{pad}{
-      #{pad}"namespace": "#{namespace.text}"
-      #{pad}"name": "#{name.text}"
-      #{pad}"type": "#{type}" 
-      #{pad}},
-  EOS
-
-  puts bag
 
 # we could spec
 
@@ -455,21 +450,25 @@ end
 
 if options[:bag]
 
-  layers.sort! do |a,b| 
-    # put wms before wfs else sort by name
-    if a[:type] != b[:type] 
-      b[:type] <=> a[:type] 
-    else
-      a[:name].downcase <=> b[:name].downcase 
-    end
-  end
+#   layers.sort! do |a,b| 
+#     # put wms before wfs else sort by name
+#     if a[:type] != b[:type] 
+#       b[:type] <=> a[:type] 
+#     else
+#       a[:name].downcase <=> b[:name].downcase 
+#     end
+#   end
+# 
+#   # ok, now I think that we want the main loop inside the creation
+#   # function so that we can output more easily.
+#   layers.each() do |layer|
+# 
+#     create_monitoring_databag( options, layer[:files], layer[:other_files] )
+#   end
+# 
 
-  # ok, now I think that we want the main loop inside the creation
-  # function so that we can output more easily.
-  layers.each() do |layer|
+    create_monitoring_databag( options, layers )
 
-    create_monitoring_databag( options, layer[:files], layer[:other_files] )
-  end
 end
 
 
