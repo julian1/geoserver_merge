@@ -360,7 +360,7 @@ def create_monitoring_databag( options, files, other_files )
   # dump layer useful layer info to stdout
 
   # it would probably be good to sort this alphabetically. 
-  
+
   # and it would be nice to use join() to generate the comma list 
   # 
 
@@ -370,6 +370,8 @@ def create_monitoring_databag( options, files, other_files )
   name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
   abort( "missing name" ) unless name
 
+  type = /_data$/.match( name.text ) ? "wfs" : "wms"
+
   # Just use EOS to create the string, then use join()
  
   pad = "    " 
@@ -378,7 +380,7 @@ def create_monitoring_databag( options, files, other_files )
       #{pad}{
       #{pad}"namespace": "#{namespace.text}"
       #{pad}"name": "#{name.text}"
-      #{pad}"type": "#{ /_data$/.match( name.text ) ? "wfs" : "wms" }" 
+      #{pad}"type": "#{type}" 
       #{pad}},
   EOS
 
@@ -394,6 +396,11 @@ def create_monitoring_databag( options, files, other_files )
 #     print ", coverage_url->#{url.text}" if url
 #   end
 # 
+
+# we should pass the files in then sort by type, and then name. 
+# to keep ordering. 
+# or have two methods/functions to implement this.
+
 
 
 end
@@ -418,16 +425,56 @@ OptionParser.new do |opts|
 end.parse!
 
 
+layers = []
 
 begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_files|
 
-  if options[:print]
-    print_layer( options, files, other_files )
-  elsif options[:bag]
-    create_monitoring_databag( options, files, other_files )
-  else
-    copy_layer( options, files, other_files )
-  end
+  ## ok, a simple list is sufficient -
+  ## and then a predicate sorting operation ... 
+
+  # extract some common fields common to all layers
+  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
+  abort( "missing namespace" ) unless namespace
+
+  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
+  abort( "missing name" ) unless name
+
+  type = /_data$/.match( name.text ) ? "wfs" : "wms"
+
+  layers << {   
+    name: name.text,
+    namespace: namespace.text,
+    type: type,
+    files: files, 
+    other_files: other_files 
+  }
+
 end 
+
+
+
+if options[:bag]
+
+  layers.sort! do |a,b| 
+    # put wms before wfs else sort by name
+    if a[:type] != b[:type] 
+      b[:type] <=> a[:type] 
+    else
+      a[:name].downcase <=> b[:name].downcase 
+    end
+  end
+
+  # ok, now I think that we want the main loop inside the creation
+  # function so that we can output more easily.
+  layers.each() do |layer|
+
+    create_monitoring_databag( options, layer[:files], layer[:other_files] )
+  end
+end
+
+
+
+
+
 
 
