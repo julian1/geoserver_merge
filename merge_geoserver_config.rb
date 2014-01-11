@@ -11,16 +11,16 @@
 # ./merge_geoserver_config.rb  -p -l JBmeteorological_data -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ 
 #
 # merge layer srs_occ into tmp
-# ./merge_geoserver_config.rb -l srs_occ  -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
+# ./merge_geoserver_config.rb -m -l srs_occ  -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
 #
 # merge layer srs_occ into tmp changing jndi reference
-# ./merge_geoserver_config.rb -l srs_occ -j java:comp/env/jdbc/legacy    -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
+# ./merge_geoserver_config.rb -m -l srs_occ -j java:comp/env/jdbc/legacy    -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
 #
 # SRC=~/imos/services/imos_geoserver_config/geoserver.imos.org.au_data_dir/
 # DEST=/home/meteo/imos/projects/chef/geoserver-123/
 # LAYER=soop_sst_1min_vw
-# ./merge_geoserver_config.rb -p -l $LAYER  -s $SRC
-# ./merge_geoserver_config.rb -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff  
+# ./merge_geoserver_config.rb -p -l $LAYER -s $SRC
+# ./merge_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff  
 #
 # Note this doesn't copy the workspace level ftl
 
@@ -283,7 +283,7 @@ end
 
 
 
-def copy_layer( options, files, other_files )
+def merge_layer( options, files, other_files )
 
   puts "--------------"
   print_layer( options, files, other_files )
@@ -356,9 +356,11 @@ end
 
 
 def create_monitoring_databag( options, layers )
+  
+  # Generate a json databag for nagios monitoring of geoserver layers.
 
   layers.sort! do |a,b| 
-    # put wms before wfs else sort by name
+    # put wms before wfs and sort by name
     if a[:type] != b[:type] 
       b[:type] <=> a[:type] 
     else
@@ -366,38 +368,31 @@ def create_monitoring_databag( options, layers )
     end
   end
 
-
+  # Generate the text for each layer
+  items = []
   layers.each() do |layer|
-    pad = "    " 
-    bag = <<-EOS
-        #{pad}{
-        #{pad}"namespace": "#{layer[:namespace]}"
-        #{pad}"name": "#{layer[:name]}"
-        #{pad}"type": "#{layer[:type]}" 
-        #{pad}},
+    item = <<-EOS
+        {
+        "namespace": "#{layer[:namespace]}"
+        "name": "#{layer[:name]}"
+        "type": "#{layer[:type]}"
+        }
     EOS
-
-    puts bag
+    item = item.chomp
+    items << item
   end
 
-
-# we could spec
-
- 
-#   if files['coverageStore']
-#     node = files['coverageStore'][:xml]
-# 
-#     url = REXML::XPath.first( node, "/coverageStore/url" )
-#     print ", coverage_url->#{url.text}" if url
-#   end
-# 
-
-# we should pass the files in then sort by type, and then name. 
-# to keep ordering. 
-# or have two methods/functions to implement this.
-
-
-
+  databag = <<-EOS
+{
+    "id": "geoserver_123",
+    "url": "http://geoserver-123.aodn.org.au/geoserver",
+    "layers":
+    [
+#{items.join( ",\n")}
+    ]
+}   
+  EOS
+  puts databag
 end
 
 
@@ -407,16 +402,21 @@ options = {}
 
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
+# we want this thing to be a boolean ...
+  opts.on('-p', '', 'print to stdout') { |v| options[:print] = true }
+  opts.on('-b', '', 'create databag to stdout') { |v| options[:databag] = true }
+  opts.on('-m', '', 'merge geoserver config') { |v| options[:merge] = true }
+
   opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
   opts.on('-d', '--dest_directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
+
   opts.on('-l', '--layer NAME', 'specific layer - otherwise all layers') { |v| options[:layer] = v }
+  ## opts.on('-f', '--layer NAME', 'get layers to process from a list') { |v| options[:layer] = v }
+
   opts.on('-j', '--jndirref NAME', 'change jndi ref') { |v| options[:jndi_reference] = v }
   opts.on('-w', '--workspace NAME', 'change workspace id') { |v| options[:workspace_id] = v }
   opts.on('-n', '--namespace NAME', 'change namespace id') { |v| options[:namespace_id] = v }
 
-# we want this thing to be a boolean ...
-  opts.on('-p', '', 'print to stdout') { |v| options[:print] = true }
-  opts.on('-b', '', 'create databag to stdout') { |v| options[:bag] = true }
 end.parse!
 
 
@@ -424,8 +424,7 @@ layers = []
 
 begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_files|
 
-  ## ok, a simple list is sufficient -
-  ## and then a predicate sorting operation ... 
+  # Gather up a list of layers with their resources to ease processing
 
   # extract some common fields common to all layers
   namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
@@ -443,37 +442,28 @@ begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_fi
     files: files, 
     other_files: other_files 
   }
-
 end 
 
 
 
-if options[:bag]
-
-#   layers.sort! do |a,b| 
-#     # put wms before wfs else sort by name
-#     if a[:type] != b[:type] 
-#       b[:type] <=> a[:type] 
-#     else
-#       a[:name].downcase <=> b[:name].downcase 
-#     end
-#   end
-# 
-#   # ok, now I think that we want the main loop inside the creation
-#   # function so that we can output more easily.
-#   layers.each() do |layer|
-# 
-#     create_monitoring_databag( options, layer[:files], layer[:other_files] )
-#   end
-# 
-
+if options[:databag]
     create_monitoring_databag( options, layers )
 
+elsif options[:print]
+  # sort 
+  layers.sort! do |a,b| 
+    a[:name].downcase <=> b[:name].downcase 
+  end
+  # and print to stdout
+  layers.each() do |layer|
+    print_layer( options, layer[:files], layer[:other_files] )
+  end
+
+elsif options[:merge]
+  layers.each() do |layer|
+    merge_layer( options, layer[:files], layer[:other_files] )
+  end
 end
-
-
-
-
 
 
 
