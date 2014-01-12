@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-# tool to print, merge and patch geoserver layers
+# tool to print, merge, and generate chef/nagios databags for geoserver layers
 
 # Examples:
 #
@@ -25,7 +25,11 @@
 # Note this doesn't copy the workspace level ftl
 
 # TODO 
-# set the namespace and workspace from the destination directory 
+
+# dump duplicate objects to stderr to avoid corrupting databag
+
+# read the namespace and workspace from the destination directory - to allow text overide 
+# ability to ignore if the layer is disabled
 # perhaps ability to change schema
 # perhaps, should read the target namespace and target workspaces and use those entries by default.
 
@@ -203,9 +207,6 @@ end
 
 
 
-
-## we really need to factor this into a block
-
 def begin_trace_oids( oids, options )
 
   # start tracing from the layer root keys
@@ -373,8 +374,8 @@ def create_monitoring_databag( options, layers )
   layers.each() do |layer|
     item = <<-EOS
         {
-        "namespace": "#{layer[:namespace]}"
-        "name": "#{layer[:name]}"
+        "namespace": "#{layer[:namespace]}",
+        "name": "#{layer[:name]}",
         "type": "#{layer[:type]}"
         }
     EOS
@@ -397,7 +398,7 @@ end
 
 
 
-
+# process the options
 options = {}
 
 OptionParser.new do |opts|
@@ -445,9 +446,8 @@ begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_fi
 end 
 
 
-
 if options[:databag]
-    create_monitoring_databag( options, layers )
+  create_monitoring_databag( options, layers )
 
 elsif options[:print]
   # sort 
@@ -464,6 +464,5 @@ elsif options[:merge]
     merge_layer( options, layer[:files], layer[:other_files] )
   end
 end
-
 
 
