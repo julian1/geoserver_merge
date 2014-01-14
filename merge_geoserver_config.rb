@@ -427,6 +427,17 @@ begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_fi
 
   # Gather up a list of layers with their resources to ease processing
 
+	abort( "missing namespace file") unless files['namespace']
+	abort( "missing layer file") unless files['layer']
+	abort( "missing layer file") unless files['dataStore']
+	abort( "missing workspace file") unless files['workspace']
+
+#    elsif REXML::XPath.first( node, "/workspace" )
+#    elsif REXML::XPath.first( node, "/coverage" )
+#    elsif REXML::XPath.first( node, "/layer" )
+
+ 
+
   # extract some common fields common to all layers
   namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
   abort( "missing namespace" ) unless namespace
