@@ -521,23 +521,15 @@ def remove_layer( options, layers )
     candidates << path
   end 
 
-
+  # select where there's only one reference to the file
   to_remove = candidates.select { |path| counts[path] == 1 } 
 
-  # get the list 
-#   x = []
-#   candidates.each() do |path|
-#     puts "#{counts[path]} -> #{path}"
-#     if counts[path] == 1
-#       x << path
-#       # we can remove
-#     end
-#   end 
-# 
   to_remove.each() do |path|
 
-    puts "here"
+    puts "remove #{path}"
   end
+
+  FileUtils.rm( to_remove )
 
 end
 
