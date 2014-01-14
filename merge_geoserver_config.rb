@@ -475,14 +475,70 @@ end
 
 
 
-def remove_layer( options, files, other_files )
+def remove_layer( options, layers )
 
-  # remove a layer
-  layer_name = REXML::XPath.first( files['layer'][:xml], '//layer/name')
-  abort( ) unless layer_name
-  puts "remove layer #{layer_name.text}"
+  # the only tricky bit here is to avoid removing files when
+  # they are referenced by more than one layer. eg. common dataStores
+  # and style files 
+
+  puts "remove layer #{options[:remove]}"
+  abort( 'do not -x remove with use -l option') if options[:layer] 
+
+  # build a a record of file counts
+  counts = {}
+  layers.each() do |layer|
+
+    # do normal files
+    layer[:files].each() do |key,val|
+      path = val[:path]
+      # puts "path #{path}"
+      counts[path] = 0 if counts[path] == nil
+      counts[path] += 1
+    end
+    # other files
+    layer[:other_files].each() do |path|
+      # puts "other file #{path}"
+      counts[path] = 0 if counts[path] == nil
+      counts[path] += 1
+    end
+  end
+
+#   #
+#   counts.each() do |file,count|
+#     puts "#{count} #{file}"
+#   end
+# 
+  # find the layer to remove
+  layer = layers.select { |layer| layer[:name] == options[:remove] } .first 
+  abort( "couldn't find layer #{options[:remove]}") if layer.nil?
+
+  # collect up removal candidate files for the layer
+  candidates = []
+  layer[:files].each() do |key,val|
+    candidates << val[:path]
+  end  
+  layer[:other_files].each() do |path|
+    candidates << path
+  end 
 
 
+  # to_remove = layers.select { |layer| layer[:name] == options[:remove] } .first 
+
+  # get the list 
+  x = []
+  candidates.each() do |path|
+    puts "#{counts[path]} -> #{path}"
+    if counts[path] == 1
+      x << path
+      # we can remove
+    end
+  end 
+
+  x = []
+  x.each() do |path|
+
+    puts "here"
+  end
 
 end
 
@@ -498,7 +554,7 @@ OptionParser.new do |opts|
   opts.on('-b', '', 'create databag to stdout') { |v| options[:databag] = true }
   opts.on('-m', '', 'merge geoserver config') { |v| options[:merge] = true }
   opts.on('-r', '', '--rename NAME') { |v| options[:rename] = v }
-  opts.on('-x', '', '--remove') { |v| options[:remove] = true }
+  opts.on('-x', '', '--remove NAME') { |v| options[:remove] = v }
 
   opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
   opts.on('-d', '--dest_directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
@@ -558,8 +614,7 @@ elsif options[:rename]
   rename_layer( options, layers.first[:files], layers.first[:other_files] )
 
 elsif options[:remove]
-  abort( 'can only remove one layer at a time!!') unless layers.length == 1
-  remove_layer( options, layers.first[:files], layers.first[:other_files] )
+  remove_layer( options, layers ) 
 
 elsif options[:print] or options[:print2]
   # sort 
