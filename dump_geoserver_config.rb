@@ -259,7 +259,7 @@ options = {}
 
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
-  opts.on('-d', '--directory NAME', 'Geoserver config directory to scan') { |v| options[:dir] = v }
+  opts.on('-s', '--directory NAME', 'Geoserver config directory to scan') { |v| options[:dir] = v }
   opts.on('-l', '--layer NAME', 'dump specific layer name') { |v| options[:layer] = v }
 end.parse!
 

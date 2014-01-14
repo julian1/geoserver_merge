@@ -10,6 +10,9 @@
 # print layer 'JBmeteorological_data'
 # ./merge_geoserver_config.rb  -p -l JBmeteorological_data -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ 
 #
+# rename a layer leaving schema name unchanged
+# ./merge_geoserver_config.rb  -s $SRC  -l argo_platform_nominal_cycle -r argo_platform_nominal_cycle_data
+#
 # merge layer srs_occ into tmp
 # ./merge_geoserver_config.rb -m -l srs_occ  -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
 #
@@ -298,14 +301,6 @@ def print_short_layer( options, files, other_files )
   workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
   print ", #{workspace.text}" if workspace
 
-#   if files['style'][:xml]
-#     node = files['style'][:xml]
-#     style = REXML::XPath.first( node, '/style/name')
-#     style_file = REXML::XPath.first( node, "/style/filename" )
-#     print ", style->#{style.text}" if style
-# #    print ", stylefile->#{style_file.text}" if style_file
-#   end
-# 
   nativeName = REXML::XPath.first( files['featureType'][:xml], '/featureType/nativeName')
   print ", #{nativeName.text}" if nativeName
 
@@ -407,6 +402,7 @@ end
 
 
 
+
 def create_monitoring_databag( options, layers )
   
   # Generate a json databag for nagios monitoring of geoserver layers.
@@ -449,6 +445,48 @@ end
 
 
 
+
+def rename_layer( options, files, other_files )
+
+  puts "--------------"
+  # remove a layer and featureType - leave the nativeName which refers to the schema
+
+  layer_name = REXML::XPath.first( files['layer'][:xml], '//layer/name')
+  abort( ) unless layer_name
+  puts "rename #{layer_name.text} to #{options[:rename]}"
+
+  featureType_name = REXML::XPath.first( files['featureType'][:xml], '//featureType/name')
+  abort( ) unless featureType_name 
+  featureType_title = REXML::XPath.first( files['featureType'][:xml], '//featureType/title')
+  abort( ) unless featureType_title
+
+  layer_name.text = options[:rename]
+  featureType_name.text = options[:rename]
+  featureType_title.text = options[:rename]
+
+  File.open( files['featureType'][:path], "w") do |data|
+    data << files['featureType'][:xml]
+  end
+
+  File.open( files['layer'][:path], "w") do |data|
+    data << files['layer'][:xml]
+  end
+end
+
+
+
+def remove_layer( options, files, other_files )
+
+  # remove a layer
+  layer_name = REXML::XPath.first( files['layer'][:xml], '//layer/name')
+  abort( ) unless layer_name
+  puts "remove layer #{layer_name.text}"
+
+
+
+end
+
+
 # process the options
 options = {}
 
@@ -459,6 +497,8 @@ OptionParser.new do |opts|
   opts.on('-2', '', 'print with short format to stdout') { |v| options[:print2] = true }
   opts.on('-b', '', 'create databag to stdout') { |v| options[:databag] = true }
   opts.on('-m', '', 'merge geoserver config') { |v| options[:merge] = true }
+  opts.on('-r', '', '--rename NAME') { |v| options[:rename] = v }
+  opts.on('-x', '', '--remove') { |v| options[:remove] = true }
 
   opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
   opts.on('-d', '--dest_directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
@@ -484,15 +524,12 @@ begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_fi
 	abort( "missing namespace file") unless files['namespace']
 	abort( "missing layer file") unless files['layer']
 	abort( "missing featureType or coverage file") unless files['featureType'] or files['coverage'] 
-
 	abort( "missing dataStore file") unless files['dataStore']
 	abort( "missing workspace file") unless files['workspace']
 
 #    elsif REXML::XPath.first( node, "/workspace" )
 #    elsif REXML::XPath.first( node, "/coverage" )
 #    elsif REXML::XPath.first( node, "/layer" )
-
- 
 
   # extract some common fields common to all layers
   namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
@@ -515,6 +552,14 @@ end
 
 if options[:databag]
   create_monitoring_databag( options, layers )
+
+elsif options[:rename]
+  abort( 'can only rename one layer at a time!!') unless layers.length == 1
+  rename_layer( options, layers.first[:files], layers.first[:other_files] )
+
+elsif options[:remove]
+  abort( 'can only remove one layer at a time!!') unless layers.length == 1
+  remove_layer( options, layers.first[:files], layers.first[:other_files] )
 
 elsif options[:print] or options[:print2]
   # sort 
