@@ -522,20 +522,19 @@ def remove_layer( options, layers )
   end 
 
 
-  # to_remove = layers.select { |layer| layer[:name] == options[:remove] } .first 
+  to_remove = candidates.select { |path| counts[path] == 1 } 
 
   # get the list 
-  x = []
-  candidates.each() do |path|
-    puts "#{counts[path]} -> #{path}"
-    if counts[path] == 1
-      x << path
-      # we can remove
-    end
-  end 
-
-  x = []
-  x.each() do |path|
+#   x = []
+#   candidates.each() do |path|
+#     puts "#{counts[path]} -> #{path}"
+#     if counts[path] == 1
+#       x << path
+#       # we can remove
+#     end
+#   end 
+# 
+  to_remove.each() do |path|
 
     puts "here"
   end
