@@ -258,6 +258,9 @@ def print_layer( options, files, other_files )
 #    print ", stylefile->#{style_file.text}" if style_file
   end
 
+  nativeName = REXML::XPath.first( files['featureType'][:xml], '/featureType/nativeName')
+  print ", nativeName->#{nativeName.text}" if nativeName
+
   if files['dataStore']
     node = files['dataStore'][:xml]
 
@@ -281,6 +284,54 @@ def print_layer( options, files, other_files )
   print ", files: #{files.length} others: #{other_files.length}"
   puts
 end
+
+
+def print_short_layer( options, files, other_files )
+
+  # dump layer useful layer info to stdout
+  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
+  print "#{name.text}" if name
+
+  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
+  print ", #{namespace.text}" if namespace
+
+  workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
+  print ", #{workspace.text}" if workspace
+
+#   if files['style'][:xml]
+#     node = files['style'][:xml]
+#     style = REXML::XPath.first( node, '/style/name')
+#     style_file = REXML::XPath.first( node, "/style/filename" )
+#     print ", style->#{style.text}" if style
+# #    print ", stylefile->#{style_file.text}" if style_file
+#   end
+# 
+  nativeName = REXML::XPath.first( files['featureType'][:xml], '/featureType/nativeName')
+  print ", #{nativeName.text}" if nativeName
+
+  if files['dataStore']
+    node = files['dataStore'][:xml]
+
+    jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+    print ", jndiref->#{jndi.text}" if jndi
+
+    schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
+    print ", schema->#{schema.text}" if schema
+
+    url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
+    print ", url->#{url.text}" if url
+  end
+
+  if files['coverageStore']
+    node = files['coverageStore'][:xml]
+    url = REXML::XPath.first( node, "/coverageStore/url" )
+    print ", coverage_url->#{url.text}" if url
+  end
+
+#  print ", files: #{files.length} others: #{other_files.length}"
+  puts
+end
+
 
 
 
@@ -405,6 +456,7 @@ OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
 # we want this thing to be a boolean ...
   opts.on('-p', '', 'print to stdout') { |v| options[:print] = true }
+  opts.on('-2', '', 'print with short format to stdout') { |v| options[:print2] = true }
   opts.on('-b', '', 'create databag to stdout') { |v| options[:databag] = true }
   opts.on('-m', '', 'merge geoserver config') { |v| options[:merge] = true }
 
@@ -427,9 +479,13 @@ begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_fi
 
   # Gather up a list of layers with their resources to ease processing
 
+  # validate required files.
+  # this logic needs to be improved. 
 	abort( "missing namespace file") unless files['namespace']
 	abort( "missing layer file") unless files['layer']
-	abort( "missing layer file") unless files['dataStore']
+	abort( "missing featureType or coverage file") unless files['featureType'] or files['coverage'] 
+
+	abort( "missing dataStore file") unless files['dataStore']
 	abort( "missing workspace file") unless files['workspace']
 
 #    elsif REXML::XPath.first( node, "/workspace" )
@@ -460,14 +516,15 @@ end
 if options[:databag]
   create_monitoring_databag( options, layers )
 
-elsif options[:print]
+elsif options[:print] or options[:print2]
   # sort 
   layers.sort! do |a,b| 
     a[:name].downcase <=> b[:name].downcase 
   end
   # and print to stdout
   layers.each() do |layer|
-    print_layer( options, layer[:files], layer[:other_files] )
+    print_layer( options, layer[:files], layer[:other_files] ) if options[:print]
+    print_short_layer( options, layer[:files], layer[:other_files] ) if options[:print2]
   end
 
 elsif options[:merge]
