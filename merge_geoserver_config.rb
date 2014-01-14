@@ -421,9 +421,9 @@ def create_monitoring_databag( options, layers )
   layers.each() do |layer|
     item = <<-EOS
         {
-        "namespace": "#{layer[:namespace]}",
-        "name": "#{layer[:name]}",
-        "type": "#{layer[:type]}"
+            "type": "#{layer[:type]}"
+            "namespace": "#{layer[:namespace]}",
+            "name": "#{layer[:name]}",
         }
     EOS
     item = item.chomp
@@ -432,8 +432,8 @@ def create_monitoring_databag( options, layers )
 
   databag = <<-EOS
 {
-    "id": "geoserver_123",
-    "url": "http://geoserver-123.aodn.org.au/geoserver",
+    "id": "geoserver_rc",
+    "url": "http://geoserver-rc.aodn.org.au/geoserver",
     "layers":
     [
 #{items.join( ",\n")}
@@ -460,9 +460,20 @@ def rename_layer( options, files, other_files )
   featureType_title = REXML::XPath.first( files['featureType'][:xml], '//featureType/title')
   abort( ) unless featureType_title
 
+  # we have to be careful with the order of these operations.
+#  puts "title text '#{featureType_title.text}' layer name '#{layer_name.text}'" 
+
+  if featureType_title.text == layer_name.text 
+    puts "Updating title text from '#{featureType_title.text}' to name '#{options[:rename]}'" 
+    featureType_title.text = options[:rename]
+  else
+    puts "Leaving title as '#{featureType_title.text}'" 
+  end
+
   layer_name.text = options[:rename]
   featureType_name.text = options[:rename]
-  featureType_title.text = options[:rename]
+
+
 
   File.open( files['featureType'][:path], "w") do |data|
     data << files['featureType'][:xml]
@@ -525,8 +536,7 @@ def remove_layer( options, layers )
   to_remove = candidates.select { |path| counts[path] == 1 } 
 
   to_remove.each() do |path|
-
-    puts "remove #{path}"
+    puts "to remove #{path}"
   end
 
   FileUtils.rm( to_remove )
