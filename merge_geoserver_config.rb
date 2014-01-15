@@ -27,7 +27,16 @@
 #
 # Note this doesn't copy the workspace level ftl
 
+
+
+
 # TODO 
+
+# change name geoserver_config_tool
+# remove the layer selection from the scanning of oids
+# see if we can make the -rename take two arguments 
+# tidy documentation
+
 
 # dump duplicate objects to stderr to avoid corrupting databag
 
@@ -421,9 +430,11 @@ def create_monitoring_databag( options, layers )
   layers.each() do |layer|
     item = <<-EOS
         {
-            "type": "#{layer[:type]}"
+            "type": "#{layer[:type]}",
             "namespace": "#{layer[:namespace]}",
             "name": "#{layer[:name]}",
+            "crit_timeout": 12,
+            "warn_timeout": 6
         }
     EOS
     item = item.chomp
