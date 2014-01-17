@@ -262,7 +262,8 @@ def print_layer( options, files, other_files )
   workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
   print ", ws->#{workspace.text}" if workspace
 
-  if files['style'][:xml]
+  # no style for wfs
+  if files['style'] and files['style'][:xml]
     node = files['style'][:xml]
     style = REXML::XPath.first( node, '/style/name')
     style_file = REXML::XPath.first( node, "/style/filename" )
@@ -444,7 +445,6 @@ def create_monitoring_databag( options, layers )
   databag = <<-EOS
 {
     "id": "geoserver_rc",
-    "url": "http://geoserver-rc.aodn.org.au/geoserver",
     "layers":
     [
 #{items.join( ",\n")}
