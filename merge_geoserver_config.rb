@@ -606,7 +606,7 @@ begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_fi
   name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
   abort( "missing name" ) unless name
 
-  type = /_data$/.match( name.text ) ? "wfs" : "wms"
+  type = /_data|_url$/.match( name.text ) ? "wfs" : "wms"
 
   layers << {   
     name: name.text,
