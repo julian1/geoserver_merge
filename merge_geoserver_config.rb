@@ -223,10 +223,9 @@ def trace_layer_oids( oids, options )
   layer_keys = oids.keys.select() { |oid|
 
     # Predicate - Is one of the objects associated with the oid a layer? 
-    layer = oids[ oid].select() do |object|
+    oids[ oid].select() do |object|
       layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
-    end
-    layer.any?
+    end .any?
   }
 
   # and recursively scan the dependencies according to the ids
