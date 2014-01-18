@@ -117,8 +117,10 @@ def print_duplicate_oids( oids, options)
 
   oids_with_multiple_files.each() do |oid|
 
-      if REXML::XPath.first( oids[ oid].first[:xml], "/layer" )
-        puts "first is layer" 
+      
+
+      if REXML::XPath.first( oids[ oid].at( 2)[:xml], "/layer" )
+        puts "second is layer" 
       end
       if REXML::XPath.first( oids[ oid].first[:xml], "/GeoServerTileLayer" )
         puts "first is gwc" 
