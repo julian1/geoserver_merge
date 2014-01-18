@@ -62,6 +62,7 @@ def relative_path( path, dir )
   # TODO must be a better way!
   path1 = File.expand_path( path)
   dir = File.expand_path( dir )
+  abort( "cannot get path") unless path1.include? dir
   path1[dir.length, 1000000 ]
 end
 
