@@ -35,6 +35,8 @@
 
 # TODO
 
+# should rename gsobjects to objects. because they are not really gsobjects but aggregated xml 
+
 # - Suppress printing of duplicate oids when it's the gwc and the layer.
   # dump duplicate objects to stderr to avoid corrupting databag
 
@@ -62,7 +64,7 @@ def relative_path( path, subpath )
   # TODO must be a better way!
   path = File.expand_path( path)
   subpath = File.expand_path( subpath )
-  abort( "cannot get path") unless path.index( subpath) == 0
+  abort( "subpath isn't in path") unless path.index( subpath) == 0
   path[subpath.length, 10000000]
 end
 
@@ -81,10 +83,9 @@ def create_oid_mappings( options)
   oids = {}
   Find.find( options[:source_dir] ) do |path|
 
-    # only take xml files
+    # only take normal regular xml gsobjects
     next unless FileTest.file?(path)
     next unless File.extname(path) == '.xml'
-
     # puts "file #{path}"
 
     # get the id of the object represented by the file
@@ -95,7 +96,7 @@ def create_oid_mappings( options)
     next unless oid
 
     # puts " oid is #{oid.text}"
-    # we use a list to catch files referencing the same id - eg. gwc-layer and layer 
+    # may be multiple gsobjects with same id. eg. gwc-layer and layer 
     if oids[ oid.text].nil?
       oids[ oid.text ] = [ { xml: xml, path: path } ]
     else
@@ -134,7 +135,7 @@ def print_duplicate_oids( oids, options)
 end
 
 
-def trace_oid( oids, oid, depth, options, files, other_files )
+def trace_oid( oids, oid, depth, options, gsobjects, other_gsobjects )
 
   # recursively trace out the objects
   # there may be more than one file that has the same id (eg layer.xml and gwc-layer)
@@ -144,23 +145,23 @@ def trace_oid( oids, oid, depth, options, files, other_files )
     path = object[:path]
 
     if REXML::XPath.first( node, "/GeoServerTileLayer" )
-      files['GeoServerTileLayer'] = object
+      gsobjects['GeoServerTileLayer'] = object
     elsif REXML::XPath.first( node, "/featureType" )
-      files['featureType'] = object
+      gsobjects['featureType'] = object
     elsif REXML::XPath.first( node, "/namespace" )
-      files['namespace'] = object
+      gsobjects['namespace'] = object
     elsif REXML::XPath.first( node, "/workspace" )
-      files['workspace'] = object
+      gsobjects['workspace'] = object
     elsif REXML::XPath.first( node, "/coverage" )
-      files['coverage'] = object
+      gsobjects['coverage'] = object
     elsif REXML::XPath.first( node, "/layer" )
-      files['layer'] = object
-      # pick up ftl files in this dir
+      gsobjects['layer'] = object
+      # pick up ftl gsobjects in this dir
       Dir["#{File.dirname( path)}/*.ftl"].each do |fullpath|
-          other_files << fullpath
+          other_gsobjects << fullpath
       end
     elsif REXML::XPath.first( node, "/dataStore" )
-      files['dataStore'] = object
+      gsobjects['dataStore'] = object
       # a dataStore with a reference to a shapefile or other geometry
       url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
       if url
@@ -170,28 +171,28 @@ def trace_oid( oids, oid, depth, options, files, other_files )
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
 
-          # glob other shapefiles that match the basename  eg. .shx, .dbf
+          # glob other shapegsobjects that match the basename  eg. .shx, .dbf
           if File.extname( fullpath) == '.shp'
             fname = fullpath.chomp(File.extname(fullpath ) )
             # puts "***** it's a shapefile  basename #{fname} "
             Dir["#{fname}*"].each do |shapefile|
-              other_files << shapefile
+              other_gsobjects << shapefile
             end
           else
             # other file types
-            other_files << fullpath
+            other_gsobjects << fullpath
           end
         end
       end
     elsif REXML::XPath.first( node, "/style" )
-      files['style'] = object
+      gsobjects['style'] = object
       # if it's a style with a ref to a stylefile
       style_file = REXML::XPath.first( node, "/style/filename" )
       if style_file
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
         # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}"
         maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
-        other_files << fullpath
+        other_gsobjects << fullpath
 
         # we also need to pick up any other resources used by the sld
         node = REXML::Document.new( File.new( fullpath ))
@@ -201,11 +202,11 @@ def trace_oid( oids, oid, depth, options, files, other_files )
           fullpath = "#{options[:source_dir]}/styles/#{resource_file}"
           maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
         	# puts "adding new resource #{fullpath}"
-          other_files << fullpath
+          other_gsobjects << fullpath
         end
       end
     elsif REXML::XPath.first( node, "/coverageStore" )
-      files['coverageStore'] = object
+      gsobjects['coverageStore'] = object
 
       url = REXML::XPath.first( node, "/coverageStore/url" )
       if url
@@ -214,7 +215,7 @@ def trace_oid( oids, oid, depth, options, files, other_files )
         if not x.empty?
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
-          other_files << fullpath
+          other_gsobjects << fullpath
         end
       end
     else
@@ -224,7 +225,7 @@ def trace_oid( oids, oid, depth, options, files, other_files )
     # find the sub objects this doc refers to
     # and process them
     REXML::XPath.each( object[:xml], "/*/*/id" ) do |e|
-      trace_oid( oids, e.text , depth + 1, options, files, other_files )
+      trace_oid( oids, e.text , depth + 1, options, gsobjects, other_gsobjects )
     end
   end
 end
@@ -234,46 +235,48 @@ def trace_layer_oids( oids, options )
 
   # find the set of objects that are layers
   layer_keys = oids.keys.select() do |oid|
-    # Predicate - Is one of the objects/files associated with the oid a layer? 
+    # Predicate - Is one of the objects/gsobjects associated with the oid a layer? 
     oids[ oid].select() do |object|
       layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
     end .any?
   end
 
-  # and recursively scan the dependencies according to the ids
+  # and recursively scan out the dependencies following the id refs
   layer_keys.each() do | oid |
-    files = {}
-    other_files = []
-    trace_oid( oids, oid, 0, options, files, other_files )
-    yield files, other_files
+    gsobjects = {}
+    other_gsobjects = []
+    trace_oid( oids, oid, 0, options, gsobjects, other_gsobjects )
+    yield gsobjects, other_gsobjects
   end
 end
 
+#### rather than have other_gsobjects, why not just add the array list to the
+### main  hash 
 
-def print_layer( options, files, other_files )
+def print_layer( options, gsobjects, other_gsobjects )
 
   # dump layer useful layer info to stdout
-  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
+  name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
   print "#{name.text}" if name
-  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
+  namespace = REXML::XPath.first( gsobjects['namespace'][:xml], '/namespace/prefix')
   print ", ns->#{namespace.text}" if namespace
-  workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
+  workspace = REXML::XPath.first( gsobjects['workspace'][:xml], '/workspace/name')
   print ", ws->#{workspace.text}" if workspace
 
   # no style for wfs
-  if files['style'] and files['style'][:xml]
-    node = files['style'][:xml]
+  if gsobjects['style'] and gsobjects['style'][:xml]
+    node = gsobjects['style'][:xml]
     style = REXML::XPath.first( node, '/style/name')
     style_file = REXML::XPath.first( node, "/style/filename" )
     print ", style->#{style.text}" if style
 #    print ", stylefile->#{style_file.text}" if style_file
   end
 
-  nativeName = REXML::XPath.first( files['featureType'][:xml], '/featureType/nativeName')
+  nativeName = REXML::XPath.first( gsobjects['featureType'][:xml], '/featureType/nativeName')
   print ", nativeName->#{nativeName.text}" if nativeName
 
-  if files['dataStore']
-    node = files['dataStore'][:xml]
+  if gsobjects['dataStore']
+    node = gsobjects['dataStore'][:xml]
     jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']")
     print ", jndiref->#{jndi.text}" if jndi
     schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']")
@@ -282,34 +285,34 @@ def print_layer( options, files, other_files )
     print ", url->#{url.text}" if url
   end
 
-  if files['coverageStore']
-    node = files['coverageStore'][:xml]
+  if gsobjects['coverageStore']
+    node = gsobjects['coverageStore'][:xml]
     url = REXML::XPath.first( node, "/coverageStore/url" )
     print ", coverage_url->#{url.text}" if url
   end
 
-  print ", files: #{files.length} others: #{other_files.length}"
+  print ", gsobjects: #{gsobjects.length} others: #{other_gsobjects.length}"
   puts
 end
 
 
-def print_layer2( options, files, other_files )
+def print_layer2( options, gsobjects, other_gsobjects )
 
   # dump layer useful layer info to stdout
-  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
+  namespace = REXML::XPath.first( gsobjects['namespace'][:xml], '/namespace/prefix')
   print "#{namespace.text}:" if namespace
-  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
+  name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
   print "#{name.text}" if name
 
-  workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
+  workspace = REXML::XPath.first( gsobjects['workspace'][:xml], '/workspace/name')
   print ", #{workspace.text}" if workspace
 
-  nativeName = REXML::XPath.first( files['featureType'][:xml], '/featureType/nativeName')
+  nativeName = REXML::XPath.first( gsobjects['featureType'][:xml], '/featureType/nativeName')
   print ", #{nativeName.text}" if nativeName
 
 
-  if files['dataStore']
-    node = files['dataStore'][:xml]
+  if gsobjects['dataStore']
+    node = gsobjects['dataStore'][:xml]
     jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']")
     print ", jndiref->#{jndi.text}" if jndi
     schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']")
@@ -318,28 +321,28 @@ def print_layer2( options, files, other_files )
     print ", url->#{url.text}" if url
   end
 
-  if files['coverageStore']
-    node = files['coverageStore'][:xml]
+  if gsobjects['coverageStore']
+    node = gsobjects['coverageStore'][:xml]
     url = REXML::XPath.first( node, "/coverageStore/url" )
     print ", coverage_url->#{url.text}" if url
   end
-#  print ", files: #{files.length} others: #{other_files.length}"
+#  print ", gsobjects: #{gsobjects.length} others: #{other_gsobjects.length}"
   puts
 end
 
 
 
-def merge_layer( options, files, other_files )
+def merge_layer( options, gsobjects, other_gsobjects )
 
   # Merge a layer from one config into another updating references
   puts "--------------"
-  print_layer( options, files, other_files )
+  print_layer( options, gsobjects, other_gsobjects )
 
-  # loop the main xml files associated with layer
-  files.keys.each() do |key|
+  # loop the main xml gsobjects associated with layer
+  gsobjects.keys.each() do |key|
 
-    src = files[key][:path]
-    node = files[key][:xml]
+    src = gsobjects[key][:path]
+    node = gsobjects[key][:xml]
     rel_src = relative_path( src, options[:source_dir] )
     dest = options[:dest_dir] + rel_src
 
@@ -382,8 +385,8 @@ def merge_layer( options, files, other_files )
     end
   end
 
-  # copy support files like styles etc.
-  other_files.each() do |path|
+  # copy support gsobjects like styles etc.
+  other_gsobjects.each() do |path|
     src = path
     rel_src = relative_path( src, options[:source_dir] )
     dest = options[:dest_dir] + rel_src
@@ -440,15 +443,15 @@ def create_monitoring_databag( options, layers )
 end
 
 
-def rename_layer( options, files, other_files )
+def rename_layer( options, gsobjects, other_gsobjects )
 
   # remove a layer and featureType - leave the nativeName which refers to the schema
-  layer_name = REXML::XPath.first( files['layer'][:xml], '//layer/name')
+  layer_name = REXML::XPath.first( gsobjects['layer'][:xml], '//layer/name')
   abort( ) unless layer_name
   puts "rename #{layer_name.text} to #{options[:rename]}"
-  featureType_name = REXML::XPath.first( files['featureType'][:xml], '//featureType/name')
+  featureType_name = REXML::XPath.first( gsobjects['featureType'][:xml], '//featureType/name')
   abort( ) unless featureType_name
-  featureType_title = REXML::XPath.first( files['featureType'][:xml], '//featureType/title')
+  featureType_title = REXML::XPath.first( gsobjects['featureType'][:xml], '//featureType/title')
   abort( ) unless featureType_title
 
   # we have to be careful with the order of these operations.
@@ -463,12 +466,12 @@ def rename_layer( options, files, other_files )
   layer_name.text = options[:rename]
   featureType_name.text = options[:rename]
 
-  # update the layer and featureType files
-  File.open( files['featureType'][:path], "w") do |data|
-    data << files['featureType'][:xml]
+  # update the layer and featureType gsobjects
+  File.open( gsobjects['featureType'][:path], "w") do |data|
+    data << gsobjects['featureType'][:xml]
   end
-  File.open( files['layer'][:path], "w") do |data|
-    data << files['layer'][:xml]
+  File.open( gsobjects['layer'][:path], "w") do |data|
+    data << gsobjects['layer'][:xml]
   end
 end
 
@@ -476,7 +479,7 @@ end
 
 def remove_layer( options, layers )
 
-  # the tricky bit is to avoid removing files when
+  # the tricky bit is to avoid removing gsobjects when
   # they are referenced by other objects. Eg. multiple layers using a common dataStores
 
   puts "remove layer #{options[:remove]}"
@@ -485,15 +488,15 @@ def remove_layer( options, layers )
   # build a a record of file counts
   counts = {}
   layers.each() do |layer|
-    # files traced by oids
-    layer[:files].each() do |key,val|
+    # gsobjects traced by oids
+    layer[:gsobjects].each() do |key,val|
       path = val[:path]
       # puts "path #{path}"
       counts[path] = 0 if counts[path] == nil
       counts[path] += 1
     end
-    # other files
-    layer[:other_files].each() do |path|
+    # other gsobjects
+    layer[:other_gsobjects].each() do |path|
       # puts "other file #{path}"
       counts[path] = 0 if counts[path] == nil
       counts[path] += 1
@@ -509,12 +512,12 @@ def remove_layer( options, layers )
   layer = layers.select { |layer| layer[:name] == options[:remove] } .first
   abort( "couldn't find layer #{options[:remove]}") if layer.nil?
 
-  # collect up removal candidate files for the layer
+  # collect up removal candidate gsobjects for the layer
   candidates = []
-  layer[:files].each() do |key,val|
+  layer[:gsobjects].each() do |key,val|
     candidates << val[:path]
   end
-  layer[:other_files].each() do |path|
+  layer[:other_gsobjects].each() do |path|
     candidates << path
   end
 
@@ -556,22 +559,22 @@ oids = create_oid_mappings( options )
 print_duplicate_oids( oids, options)
 
 layers = []
-trace_layer_oids( oids, options ) do  |files, other_files|
+trace_layer_oids( oids, options ) do  |gsobjects, other_gsobjects|
 
   # Gather up a list of layers with their resources to ease processing
 
-  # validate we have the expected files
+  # validate we have the expected gsobjects
   # this logic needs to be improved
-	abort( "missing namespace file") unless files['namespace']
-	abort( "missing layer file") unless files['layer']
-	abort( "missing featureType or coverage file") unless files['featureType'] or files['coverage']
-	abort( "missing dataStore file") unless files['dataStore']
-	abort( "missing workspace file") unless files['workspace']
+	abort( "missing namespace file") unless gsobjects['namespace']
+	abort( "missing layer file") unless gsobjects['layer']
+	abort( "missing featureType or coverage file") unless gsobjects['featureType'] or gsobjects['coverage']
+	abort( "missing dataStore file") unless gsobjects['dataStore']
+	abort( "missing workspace file") unless gsobjects['workspace']
 #    elsif REXML::XPath.first( node, "/workspace" )
 #    elsif REXML::XPath.first( node, "/coverage" )
   # extract some common fields common to all layers
-  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
-  name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
+  namespace = REXML::XPath.first( gsobjects['namespace'][:xml], '/namespace/prefix')
+  name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
 
   # Following Imos naming convention
   type = /_data|_url$/.match( name.text ) ? "wfs" : "wms"
@@ -580,12 +583,10 @@ trace_layer_oids( oids, options ) do  |files, other_files|
     name: name.text,
     namespace: namespace.text,
     type: type,
-    files: files,
-    other_files: other_files
+    gsobjects: gsobjects,
+    other_gsobjects: other_gsobjects
   }
 end
-
-
 
 
 if options[:databag]
@@ -593,7 +594,7 @@ if options[:databag]
 
 elsif options[:rename]
   abort( 'can only rename one layer at a time!!') unless layers.length == 1
-  rename_layer( options, layers.first[:files], layers.first[:other_files] )
+  rename_layer( options, layers.first[:gsobjects], layers.first[:other_gsobjects] )
 
 elsif options[:remove]
   remove_layer( options, layers )
@@ -605,13 +606,13 @@ elsif options[:print] or options[:print2]
   end
   # and print to stdout
   layers.each() do |layer|
-    print_layer( options, layer[:files], layer[:other_files] ) if options[:print]
-    print_layer2( options, layer[:files], layer[:other_files] ) if options[:print2]
+    print_layer( options, layer[:gsobjects], layer[:other_gsobjects] ) if options[:print]
+    print_layer2( options, layer[:gsobjects], layer[:other_gsobjects] ) if options[:print2]
   end
 
 elsif options[:merge]
   layers.each() do |layer|
-    merge_layer( options, layer[:files], layer[:other_files] )
+    merge_layer( options, layer[:gsobjects], layer[:other_gsobjects] )
   end
 end
 
