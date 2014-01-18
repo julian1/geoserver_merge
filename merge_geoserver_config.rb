@@ -225,56 +225,26 @@ end
 
 def begin_trace_oids( oids, options )
 
-  # we want to refactor this to avoid using the loop...
-
-
-  puts "******here1"
-
+  # find the objects that are layers
   layer_keys = oids.keys.select() { |oid|
-
-#    |layer| layer[:name] == options[:remove] 
 
     layer_name = nil
     oids[ oid].each() do |object|
       layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
-      puts "#{layer_name}"
+      # puts "#{layer_name}"
     end
     layer_name
   } 
 
-  puts "******here2"
-
+  # and recursively scan the dependencies
   layer_keys.each() do | oid |
-    # do the scan
     files = {} 
     other_files = []
     trace_oid( oids, oid, 0, options, files, other_files )
 
     yield files, other_files
-
   end
 
-  puts "******here3"
-
-#   # start tracing from the layer root keys
-#   oids.keys.each() do |oid|
-# 
-#     # keep going unless this object is a layer file? 
-#     layer_name = nil
-#     oids[ oid].each() do |object|
-#       layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
-#     end
-#     next unless layer_name
-# 
-#     # do the scan
-#     files = {} 
-#     other_files = []
-#     trace_oid( oids, oid, 0, options, files, other_files )
-# 
-# 
-#     yield files, other_files
-# 
-#   end
 end
 
 
