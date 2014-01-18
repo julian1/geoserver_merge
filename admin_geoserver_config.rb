@@ -440,12 +440,20 @@ def create_monitoring_databag( options, layers )
 end
 
 
-def rename_layer( options, gsobjects, other_gsobjects )
+def rename_layer( options, layers )
+
+	puts "rename!! #{options[:rename]} #{options[:rename_target]}" 
+
+  # find the layer
+  layer = layers.select() do |candidate|
+    candidate[:name] == options[:rename]
+  end .first()
+  abort( "cannot find layer #{options[:rename]}" ) unless layer
+  gsobjects = layer[:gsobjects]
 
   # remove a layer and featureType - leave the nativeName which refers to the schema
   layer_name = REXML::XPath.first( gsobjects['layer'][:xml], '//layer/name')
   abort( ) unless layer_name
-  puts "rename #{layer_name.text} to #{options[:rename]}"
   featureType_name = REXML::XPath.first( gsobjects['featureType'][:xml], '//featureType/name')
   abort( ) unless featureType_name
   featureType_title = REXML::XPath.first( gsobjects['featureType'][:xml], '//featureType/title')
@@ -454,14 +462,14 @@ def rename_layer( options, gsobjects, other_gsobjects )
   # we have to be careful with the order of these operations.
   #  puts "title text '#{featureType_title.text}' layer name '#{layer_name.text}'"
   if featureType_title.text == layer_name.text
-    puts "Updating title text from '#{featureType_title.text}' to name '#{options[:rename]}'"
-    featureType_title.text = options[:rename]
+    puts "Updating title text from '#{featureType_title.text}' to name '#{options[:rename_target]}'"
+    featureType_title.text = options[:rename_target]
   else
     puts "Leaving title as '#{featureType_title.text}'"
   end
 
-  layer_name.text = options[:rename]
-  featureType_name.text = options[:rename]
+  layer_name.text = options[:rename_target]
+  featureType_name.text = options[:rename_target]
 
   # update the layer and featureType gsobjects
   File.open( gsobjects['featureType'][:path], "w") do |data|
@@ -536,7 +544,7 @@ OptionParser.new do |opts|
   opts.on('-2', '', 'print to stdout with shorter format') { |v| options[:print2] = true }
   opts.on('-b', '', 'create databag') { |v| options[:databag] = true }
   opts.on('-m', '', 'merge geoserver config') { |v| options[:merge] = true }
-  opts.on('-r', '', '--rename NAME') { |v| options[:rename] = v }
+  opts.on('-r', '', '--rename NAME NAME') { |v1,v2| options[:rename] = v1; options[:rename_target] = v2 }
   opts.on('-x', '', '--remove NAME') { |v| options[:remove] = v }
   # directories
   opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
@@ -588,8 +596,12 @@ if options[:databag]
   create_monitoring_databag( options, layers )
 
 elsif options[:rename]
-  abort( 'can only rename one layer at a time!!') unless layers.length == 1
-  rename_layer( options, layers.first[:gsobjects], layers.first[:other_gsobjects] )
+#   abort( 'can only rename one layer at a time!!') unless layers.length == 1
+#   rename_layer( options, layers.first[:gsobjects], layers.first[:other_gsobjects] )
+# 
+
+  # rename_layer( options, layers.first[:gsobjects], layers.first[:other_gsobjects] )
+  rename_layer( options, layers )
 
 elsif options[:remove]
   remove_layer( options, layers )
