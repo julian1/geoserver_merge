@@ -225,26 +225,20 @@ end
 
 def begin_trace_oids( oids, options )
 
+  # we want to refactor this to avoid using the loop...
+
+
+#  layers = 
+
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
 
-    # Ok, there's an issue
-    # only concerned with tracing from a layer
-
-
-#    next unless ( oid =~ /LayerInfoImpl.*/ )
-
-    # limit scan to specific layer if specified in options
-#    if options[:layer]
-#      found = false
-      layer_name = nil
-      oids[ oid].each() do |object|
-        layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
-#        found = layer_name && layer_name.text == options[:layer]
-      end
-#      next unless found
-      next unless layer_name
-#    end
+    # keep going unless this object is a layer file? 
+    layer_name = nil
+    oids[ oid].each() do |object|
+      layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
+    end
+    next unless layer_name
 
     # do the scan
     files = {} 
