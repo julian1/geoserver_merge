@@ -14,9 +14,8 @@
 # print layer 'JBmeteorological_data' (MAY WANT TO REMOVE AND JUST USE GREP or OPTION SPECIFIC_
 # ./admin_geoserver_config.rb -s $SRC -p -l JBmeteorological_data
 #
-# rename a layer leaving schema name unchanged
-# (CHANGE SO THAT R handles both)
-# ./admin_geoserver_config.rb  -s $SRC  -l argo_platform_nominal_cycle -r argo_platform_nominal_cycle_data
+# rename a layer leaving schema, source table etc unchanged
+# ./admin_geoserver_config.rb -s $SRC -r xbt_realtime,zzz
 #
 # merge layer srs_occ into directory tmp
 # ./admin_geoserver_config.rb -m -l srs_occ -s $SRC -d tmp/
@@ -442,7 +441,7 @@ end
 
 def rename_layer( options, layers )
 
-	puts "rename!! #{options[:rename].at( 0)} -> #{options[:rename].at(1)}" 
+	puts "rename!! #{options[:rename]} -> #{options[:rename_target]}" 
 
   # find the layer
   layer = layers.select() do |candidate|
@@ -544,11 +543,11 @@ OptionParser.new do |opts|
   opts.on('-b', 'create databag') { |v| options[:databag] = true }
   opts.on('-m', 'merge geoserver config') { |v| options[:merge] = true }
 
-
   # opts.on( '-l', '--list a,b,c', Array, "List of parameters" ) do|l|
-  opts.on('-r', '--rename NAME,NAME', Array) { |v| options[:rename] = v }
+  opts.on('-r', '--rename NAME,NAME', Array) { |v| options[:rename] = v.at( 0); options[:rename_target] = v.at( 1) }
 
-  opts.on('-x', '', '--remove NAME') { |v| options[:remove] = v }
+  # arg must look like this -r u1,u2 
+  opts.on('-x', '--remove NAME') { |v| options[:remove] = v }
   # directories
   opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
   opts.on('-d', '--dest_directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
@@ -599,11 +598,6 @@ if options[:databag]
   create_monitoring_databag( options, layers )
 
 elsif options[:rename]
-#   abort( 'can only rename one layer at a time!!') unless layers.length == 1
-#   rename_layer( options, layers.first[:gsobjects], layers.first[:other_gsobjects] )
-# 
-
-  # rename_layer( options, layers.first[:gsobjects], layers.first[:other_gsobjects] )
   rename_layer( options, layers )
 
 elsif options[:remove]
