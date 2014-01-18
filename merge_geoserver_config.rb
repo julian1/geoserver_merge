@@ -1,9 +1,8 @@
 #!/usr/bin/ruby
-
-# tool to print, merge, and generate chef/nagios databags for geoserver layers
-
-# Examples:
 #
+# Tool to print, merge, and generate chef/nagios databags for geoserver layers
+#
+# Examples:
 #
 # SRC=~/imos/services/imos_geoserver_config/geoserver.imos.org.au_data_dir/
 # DEST=/home/meteo/imos/projects/chef/geoserver-123/
@@ -26,7 +25,7 @@
 # ./merge_geoserver_config.rb -m -l srs_occ -j java:comp/env/jdbc/legacy  -s $SRC -d tmp/
 #
 # merge changing workspace ids to match Dest workspace ids
-# ./merge_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff
+# ./merge_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w 1234 -n 5678 
 #
 # Note merging doesn't copy the workspace level ftl
 #
@@ -35,6 +34,8 @@
 
 
 # TODO
+
+# Suppress printing of duplicate oids when it's the gwc and the layer.
 
 # change name geoserver_config_tool
 # remove the layer selection from the scanning of oids
@@ -78,10 +79,8 @@ def create_oid_mappings( options)
 
   # scan the directory and create a set of mappings from object references
   # to their paths and xml structure
-
   # the list of geoserver object identifiers
   oids = {}
-
   Find.find( options[:source_dir] ) do |path|
 
     # only take xml files
@@ -98,22 +97,28 @@ def create_oid_mappings( options)
     next unless oid
 
     # puts " oid is #{oid.text}"
-
-    # there are cases where same id will have several associated files
-    # eg. he gwc-layer id corresponds with the layer.xml file
-    # so use a list
+    # we use a list to catch files referencing the same id - eg. gwc-layer and layer 
     if oids[ oid.text].nil?
       oids[ oid.text ] = [ { xml: xml, path: path } ]
     else
-
-      path2 = oids[ oid.text ].first[:path]
-      puts "duplicate object id #{relative_path(path, options[:source_dir])} (#{relative_path(path2, options[:source_dir])})"
-
       oids[ oid.text ] << { xml: xml, path: path }
     end
   end
   oids
 end
+
+
+def print_duplicate_oids( oids, options)
+
+
+#   path2 = oids[ oid.text ].first[:path]
+#   puts "duplicate object id #{relative_path(path, options[:source_dir])} (#{relative_path(path2, options[:source_dir])})"
+# 
+
+
+
+end
+
 
 
 def trace_oid( oids, oid, depth, options, files, other_files )
@@ -214,15 +219,14 @@ end
 
 def trace_layer_oids( oids, options )
 
-  # find the objects that are layers
+  # find the set of objects that are layers
   layer_keys = oids.keys.select() { |oid|
 
-    layer_name = nil
-    oids[ oid].each() do |object|
+    # Predicate - Is one of the objects associated with the oid a layer? 
+    layer = oids[ oid].select() do |object|
       layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
-      # puts "#{layer_name}"
     end
-    layer_name
+    layer.any?
   }
 
   # and recursively scan the dependencies according to the ids
@@ -313,6 +317,7 @@ end
 
 def merge_layer( options, files, other_files )
 
+  # Merge a layer from one config into another updating references
   puts "--------------"
   print_layer( options, files, other_files )
 
@@ -354,18 +359,16 @@ def merge_layer( options, files, other_files )
         puts "change namespace_id -> #{namespace_id.text}"
       end
 
+      # write the new file
       puts "writing xml #{rel_src} -> #{dest}"
-
       FileUtils.mkdir_p(File.dirname(dest ))
-
       File.open( dest,"w") do |data|
          data << node
       end
     end
   end
 
-
-  # copy other support files
+  # copy support files like styles etc.
   other_files.each() do |path|
     src = path
     rel_src = relative_path( src, options[:source_dir] )
@@ -468,8 +471,7 @@ def remove_layer( options, layers )
   # build a a record of file counts
   counts = {}
   layers.each() do |layer|
-
-    # do normal files
+    # files traced by oids
     layer[:files].each() do |key,val|
       path = val[:path]
       # puts "path #{path}"
@@ -504,11 +506,9 @@ def remove_layer( options, layers )
 
   # select where there's only one reference to the file
   to_remove = candidates.select { |path| counts[path] == 1 }
-
   to_remove.each() do |path|
     puts "to remove #{path}"
   end
-
   FileUtils.rm( to_remove )
 end
 
@@ -518,29 +518,26 @@ options = {}
 
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
-# we want this thing to be a boolean ...
+  # actions
   opts.on('-p', '', 'print to stdout') { |v| options[:print] = true }
-  opts.on('-2', '', 'print with short format to stdout') { |v| options[:print2] = true }
-  opts.on('-b', '', 'create databag to stdout') { |v| options[:databag] = true }
+  opts.on('-2', '', 'print to stdout with shorter format') { |v| options[:print2] = true }
+  opts.on('-b', '', 'create databag') { |v| options[:databag] = true }
   opts.on('-m', '', 'merge geoserver config') { |v| options[:merge] = true }
   opts.on('-r', '', '--rename NAME') { |v| options[:rename] = v }
   opts.on('-x', '', '--remove NAME') { |v| options[:remove] = v }
-
+  # directories
   opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
   opts.on('-d', '--dest_directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
-
+  # other control
   opts.on('-l', '--layer NAME', 'specific layer - otherwise all layers') { |v| options[:layer] = v }
   ## opts.on('-f', '--layer NAME', 'get layers to process from a list') { |v| options[:layer] = v }
-
   opts.on('-j', '--jndirref NAME', 'change jndi ref') { |v| options[:jndi_reference] = v }
   opts.on('-w', '--workspace NAME', 'change workspace id') { |v| options[:workspace_id] = v }
   opts.on('-n', '--namespace NAME', 'change namespace id') { |v| options[:namespace_id] = v }
-
 end.parse!
 
 
 layers = []
-
 trace_layer_oids( create_oid_mappings( options ), options ) do  |files, other_files|
 
   # Gather up a list of layers with their resources to ease processing
@@ -558,6 +555,7 @@ trace_layer_oids( create_oid_mappings( options ), options ) do  |files, other_fi
   namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
   name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
 
+  # Following Imos naming convention
   type = /_data|_url$/.match( name.text ) ? "wfs" : "wms"
 
   layers << {
