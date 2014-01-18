@@ -112,9 +112,7 @@ def print_duplicate_oids( oids, options)
     oids[ oid].length > 1
   end
 
-  # It would be really nice to filter global web cache, and layer which are expected to match. 
-  # length has to be 2. 
-
+  # ignore duplicates between global web cache, and layer which are expected to match. 
   oids_with_multiple_files = oids_with_multiple_files.delete_if() do |oid|
       oids[ oid].length == 2 \
       and \
@@ -126,16 +124,13 @@ def print_duplicate_oids( oids, options)
 
   # print them
   oids_with_multiple_files.each() do |oid|
-    print "#{oid} "
+    print "Dupliate id #{oid} "
     oids[ oid].each() do |object|
-
       print " #{relative_path( object[:path], options[:source_dir])} "
-
     end
     puts
   end
 end
-
 
 
 def trace_oid( oids, oid, depth, options, files, other_files )
