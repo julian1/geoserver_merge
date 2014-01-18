@@ -57,13 +57,13 @@ require 'yaml'
 require 'fileutils'
 
 
-def relative_path( path, dir )
-  # subtract dir from path to give relative path
+def relative_path( path, subpath )
+  # subtract subpath from path to give relative path
   # TODO must be a better way!
-  path1 = File.expand_path( path)
-  dir = File.expand_path( dir )
-  abort( "cannot get path") unless path1.include? dir
-  path1[dir.length, 1000000 ]
+  path = File.expand_path( path)
+  subpath = File.expand_path( subpath )
+  abort( "cannot get path") unless path.index( subpath) == 0
+  path[subpath.length, 10000000]
 end
 
 
