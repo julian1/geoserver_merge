@@ -9,11 +9,11 @@
 # DEST=/home/meteo/imos/projects/chef/geoserver-123/
 # LAYER=soop_sst_1min_vw
 #
-# print all layers 
+# print all layers
 # ./merge_geoserver_config.rb -s $SRC -p
 #
 # print layer 'JBmeteorological_data' (MAY WANT TO REMOVE AND JUST USE GREP or OPTION SPECIFIC_
-# ./merge_geoserver_config.rb -s $SRC -p -l JBmeteorological_data 
+# ./merge_geoserver_config.rb -s $SRC -p -l JBmeteorological_data
 #
 # rename a layer leaving schema name unchanged
 # (CHANGE SO THAT R handles both)
@@ -26,7 +26,7 @@
 # ./merge_geoserver_config.rb -m -l srs_occ -j java:comp/env/jdbc/legacy  -s $SRC -d tmp/
 #
 # merge changing workspace ids to match Dest workspace ids
-# ./merge_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff  
+# ./merge_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff
 #
 # Note merging doesn't copy the workspace level ftl
 #
@@ -34,22 +34,22 @@
 
 
 
-# TODO 
+# TODO
 
 # change name geoserver_config_tool
 # remove the layer selection from the scanning of oids
-# see if we can make the -rename take two arguments 
+# see if we can make the -rename take two arguments
 # tidy documentation
 
 
 # dump duplicate objects to stderr to avoid corrupting databag
 
-# read the namespace and workspace from the destination directory - to allow text overide 
+# read the namespace and workspace from the destination directory - to allow text overide
 # ability to ignore if the layer is disabled
 # perhaps ability to change schema
 # perhaps, should read the target namespace and target workspaces and use those entries by default.
 
-# ok, we got comthing working 
+# ok, we got comthing working
 
 require 'rexml/document'
 require 'rexml/xpath'
@@ -77,10 +77,10 @@ end
 def create_oid_mappings( options)
 
   # scan the directory and create a set of mappings from object references
-  # to their paths and xml structure 
+  # to their paths and xml structure
 
-  # the list of geoserver object identifiers 
-  oids = {} 
+  # the list of geoserver object identifiers
+  oids = {}
 
   Find.find( options[:source_dir] ) do |path|
 
@@ -95,19 +95,19 @@ def create_oid_mappings( options)
     file = File.new( path )
     xml = REXML::Document.new file
     oid = REXML::XPath.first( xml, "/*/id" )
-    next unless oid 
+    next unless oid
 
     # puts " oid is #{oid.text}"
 
-    # there are cases where same id will have several associated files 
+    # there are cases where same id will have several associated files
     # eg. he gwc-layer id corresponds with the layer.xml file
     # so use a list
-    if oids[ oid.text].nil? 
+    if oids[ oid.text].nil?
       oids[ oid.text ] = [ { xml: xml, path: path } ]
     else
 
-      path2 = oids[ oid.text ].first[:path] 
-      puts "duplicate object id #{relative_path(path, options[:source_dir])} (#{relative_path(path2, options[:source_dir])})" 
+      path2 = oids[ oid.text ].first[:path]
+      puts "duplicate object id #{relative_path(path, options[:source_dir])} (#{relative_path(path2, options[:source_dir])})"
 
       oids[ oid.text ] << { xml: xml, path: path }
     end
@@ -118,47 +118,43 @@ end
 
 def trace_oid( oids, oid, depth, options, files, other_files )
 
-  # recursively trace out the objects 
-  # there may be more than one file that has the same id (eg layer.xml and gwc-layer) 
+  # recursively trace out the objects
+  # there may be more than one file that has the same id (eg layer.xml and gwc-layer)
   oids[ oid].each() do |object|
 
     node = object[:xml]
     path = object[:path]
 
     if REXML::XPath.first( node, "/GeoServerTileLayer" )
-      files['GeoServerTileLayer'] = object 
+      files['GeoServerTileLayer'] = object
     elsif REXML::XPath.first( node, "/featureType" )
-      files['featureType'] = object 
+      files['featureType'] = object
     elsif REXML::XPath.first( node, "/namespace" )
-      files['namespace'] = object 
+      files['namespace'] = object
     elsif REXML::XPath.first( node, "/workspace" )
-      files['workspace'] = object 
+      files['workspace'] = object
     elsif REXML::XPath.first( node, "/coverage" )
-      files['coverage'] = object 
-
+      files['coverage'] = object
     elsif REXML::XPath.first( node, "/layer" )
-      files['layer'] = object 
-
-      # pick up ftl files in this dir 
+      files['layer'] = object
+      # pick up ftl files in this dir
       Dir["#{File.dirname( path)}/*.ftl"].each do |fullpath|
           other_files << fullpath
       end
-
     elsif REXML::XPath.first( node, "/dataStore" )
-      files['dataStore'] = object 
- 
+      files['dataStore'] = object
       # a dataStore with a reference to a shapefile or other geometry
       url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
       if url
         # print "#{pad(depth+1)} +url #{url.text} "
-        x = url.text.scan( /file:(.*)/ ) 
-        if not x.empty? 
+        x = url.text.scan( /file:(.*)/ )
+        if not x.empty?
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
 
           # glob other shapefiles that match the basename  eg. .shx, .dbf
           if File.extname( fullpath) == '.shp'
-            fname = fullpath.chomp(File.extname(fullpath ) ) 
+            fname = fullpath.chomp(File.extname(fullpath ) )
             # puts "***** it's a shapefile  basename #{fname} "
             Dir["#{fname}*"].each do |shapefile|
               other_files << shapefile
@@ -166,47 +162,44 @@ def trace_oid( oids, oid, depth, options, files, other_files )
           else
             # other file types
             other_files << fullpath
-          end	
+          end
         end
       end
-
     elsif REXML::XPath.first( node, "/style" )
       files['style'] = object
-
-      # if it's a style with a ref to a stylefile 
+      # if it's a style with a ref to a stylefile
       style_file = REXML::XPath.first( node, "/style/filename" )
       if style_file
         fullpath = "#{File.dirname( object[:path] )}/#{style_file.text}"
-        # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}" 
+        # print "#{pad(depth + 1)} +STYLEFILE #{fullpath}"
         maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
         other_files << fullpath
 
         # we also need to pick up any other resources used by the sld
-        node = REXML::Document.new( File.new( fullpath )) 
+        node = REXML::Document.new( File.new( fullpath ))
 
         REXML::XPath.each( node, "//OnlineResource" ) do |e|
           resource_file = e.attributes["xlink:href"]
           fullpath = "#{options[:source_dir]}/styles/#{resource_file}"
           maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
-        	# puts "adding new resource #{fullpath}" 
+        	# puts "adding new resource #{fullpath}"
           other_files << fullpath
         end
       end
-    
     elsif REXML::XPath.first( node, "/coverageStore" )
       files['coverageStore'] = object
 
       url = REXML::XPath.first( node, "/coverageStore/url" )
       if url
         # print "#{pad(depth+1)} +url #{url.text} "
-        x = url.text.scan( /file:(.*)/ ) 
-        if not x.empty? 
+        x = url.text.scan( /file:(.*)/ )
+        if not x.empty?
           fullpath = "#{options[:source_dir]}/#{x.first().first() }"
           maybe_abort( "ERROR: missing file #{fullpath}", options) unless File.exists?( fullpath)
           other_files << fullpath
         end
       end
-    else 
+    else
         maybe_abort( "ERROR: #{pad(depth+1)} +UNKNOWN element #{path}", options)
     end
 
@@ -230,11 +223,11 @@ def trace_layer_oids( oids, options )
       # puts "#{layer_name}"
     end
     layer_name
-  } 
+  }
 
   # and recursively scan the dependencies according to the ids
   layer_keys.each() do | oid |
-    files = {} 
+    files = {}
     other_files = []
     trace_oid( oids, oid, 0, options, files, other_files )
     yield files, other_files
@@ -266,9 +259,9 @@ def print_layer( options, files, other_files )
 
   if files['dataStore']
     node = files['dataStore'][:xml]
-    jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+    jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']")
     print ", jndiref->#{jndi.text}" if jndi
-    schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
+    schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']")
     print ", schema->#{schema.text}" if schema
     url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
     print ", url->#{url.text}" if url
@@ -299,9 +292,9 @@ def print_layer2( options, files, other_files )
 
   if files['dataStore']
     node = files['dataStore'][:xml]
-    jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+    jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']")
     print ", jndiref->#{jndi.text}" if jndi
-    schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
+    schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']")
     print ", schema->#{schema.text}" if schema
     url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
     print ", url->#{url.text}" if url
@@ -315,7 +308,6 @@ def print_layer2( options, files, other_files )
 #  print ", files: #{files.length} others: #{other_files.length}"
   puts
 end
-
 
 
 
@@ -342,29 +334,29 @@ def merge_layer( options, files, other_files )
       # we make the conversion irrespective of the actual file names
 
       # patch jndi entry
-      jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
+      jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']")
       if jndi and options[:jndi_reference]
         jndi.text = options[:jndi_reference]
         puts "change jndi_reference -> #{jndi.text}"
-      end  
+      end
 
       # patch workspace ref
-      workspace_id = REXML::XPath.first( node, "//workspace/id") 
+      workspace_id = REXML::XPath.first( node, "//workspace/id")
       if workspace_id and options[:workspace_id]
         workspace_id.text = options[:workspace_id]
         puts "change workspace_id -> #{workspace_id.text}"
-      end  
+      end
 
       # patch namespace ref
-      namespace_id = REXML::XPath.first( node, "//namespace/id") 
+      namespace_id = REXML::XPath.first( node, "//namespace/id")
       if namespace_id and options[:namespace_id]
         namespace_id.text = options[:namespace_id]
         puts "change namespace_id -> #{namespace_id.text}"
-      end  
+      end
 
       puts "writing xml #{rel_src} -> #{dest}"
 
-      FileUtils.mkdir_p(File.dirname(dest ))    
+      FileUtils.mkdir_p(File.dirname(dest ))
 
       File.open( dest,"w") do |data|
          data << node
@@ -375,7 +367,7 @@ def merge_layer( options, files, other_files )
 
   # copy other support files
   other_files.each() do |path|
-    src = path 
+    src = path
     rel_src = relative_path( src, options[:source_dir] )
     dest = options[:dest_dir] + rel_src
 
@@ -383,25 +375,22 @@ def merge_layer( options, files, other_files )
       puts "already exists #{dest}"
     else
       puts "copying #{rel_src} -> #{dest}"
-      FileUtils.mkdir_p(File.dirname(dest ))    
+      FileUtils.mkdir_p(File.dirname(dest ))
       FileUtils.cp_r(src,dest)
     end
   end
 end
 
 
-
-
 def create_monitoring_databag( options, layers )
-  
-  # Generate a json databag for nagios monitoring of geoserver layers.
 
-  layers.sort! do |a,b| 
+  # Generate a chef json databag for nagios monitoring of geoserver layers.
+  layers.sort! do |a,b|
     # put wms before wfs and sort by name
-    if a[:type] != b[:type] 
-      b[:type] <=> a[:type] 
+    if a[:type] != b[:type]
+      b[:type] <=> a[:type]
     else
-      a[:name].downcase <=> b[:name].downcase 
+      a[:name].downcase <=> b[:name].downcase
     end
   end
 
@@ -428,47 +417,39 @@ def create_monitoring_databag( options, layers )
     [
 #{items.join( ",\n")}
     ]
-}   
+}
   EOS
   puts databag
 end
 
 
-
-
 def rename_layer( options, files, other_files )
 
-  puts "--------------"
   # remove a layer and featureType - leave the nativeName which refers to the schema
-
   layer_name = REXML::XPath.first( files['layer'][:xml], '//layer/name')
   abort( ) unless layer_name
   puts "rename #{layer_name.text} to #{options[:rename]}"
-
   featureType_name = REXML::XPath.first( files['featureType'][:xml], '//featureType/name')
-  abort( ) unless featureType_name 
+  abort( ) unless featureType_name
   featureType_title = REXML::XPath.first( files['featureType'][:xml], '//featureType/title')
   abort( ) unless featureType_title
 
   # we have to be careful with the order of these operations.
-#  puts "title text '#{featureType_title.text}' layer name '#{layer_name.text}'" 
-
-  if featureType_title.text == layer_name.text 
-    puts "Updating title text from '#{featureType_title.text}' to name '#{options[:rename]}'" 
+  #  puts "title text '#{featureType_title.text}' layer name '#{layer_name.text}'"
+  if featureType_title.text == layer_name.text
+    puts "Updating title text from '#{featureType_title.text}' to name '#{options[:rename]}'"
     featureType_title.text = options[:rename]
   else
-    puts "Leaving title as '#{featureType_title.text}'" 
+    puts "Leaving title as '#{featureType_title.text}'"
   end
 
   layer_name.text = options[:rename]
   featureType_name.text = options[:rename]
 
-
-
+  # update the layer and featureType files
   File.open( files['featureType'][:path], "w") do |data|
     data << files['featureType'][:xml]
   end
-
   File.open( files['layer'][:path], "w") do |data|
     data << files['layer'][:xml]
   end
@@ -478,12 +459,11 @@ end
 
 def remove_layer( options, layers )
 
-  # the only tricky bit here is to avoid removing files when
-  # they are referenced by more than one layer. eg. common dataStores
-  # and style files 
+  # the tricky bit is to avoid removing files when
+  # they are referenced by other objects. Eg. multiple layers using a common dataStores
 
   puts "remove layer #{options[:remove]}"
-  abort( 'do not -x remove with use -l option') if options[:layer] 
+  abort( 'do not -x remove with use -l option') if options[:layer]
 
   # build a a record of file counts
   counts = {}
@@ -508,29 +488,28 @@ def remove_layer( options, layers )
 #   counts.each() do |file,count|
 #     puts "#{count} #{file}"
 #   end
-# 
+#
   # find the layer to remove
-  layer = layers.select { |layer| layer[:name] == options[:remove] } .first 
+  layer = layers.select { |layer| layer[:name] == options[:remove] } .first
   abort( "couldn't find layer #{options[:remove]}") if layer.nil?
 
   # collect up removal candidate files for the layer
   candidates = []
   layer[:files].each() do |key,val|
     candidates << val[:path]
-  end  
+  end
   layer[:other_files].each() do |path|
     candidates << path
-  end 
+  end
 
   # select where there's only one reference to the file
-  to_remove = candidates.select { |path| counts[path] == 1 } 
+  to_remove = candidates.select { |path| counts[path] == 1 }
 
   to_remove.each() do |path|
     puts "to remove #{path}"
   end
 
   FileUtils.rm( to_remove )
-
 end
 
 
@@ -566,35 +545,29 @@ trace_layer_oids( create_oid_mappings( options ), options ) do  |files, other_fi
 
   # Gather up a list of layers with their resources to ease processing
 
-  # validate required files.
-  # this logic needs to be improved. 
+  # validate we have the expected files
+  # this logic needs to be improved
 	abort( "missing namespace file") unless files['namespace']
 	abort( "missing layer file") unless files['layer']
-	abort( "missing featureType or coverage file") unless files['featureType'] or files['coverage'] 
+	abort( "missing featureType or coverage file") unless files['featureType'] or files['coverage']
 	abort( "missing dataStore file") unless files['dataStore']
 	abort( "missing workspace file") unless files['workspace']
-
 #    elsif REXML::XPath.first( node, "/workspace" )
 #    elsif REXML::XPath.first( node, "/coverage" )
-#    elsif REXML::XPath.first( node, "/layer" )
-
   # extract some common fields common to all layers
   namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
-  abort( "missing namespace" ) unless namespace
-
   name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
-  abort( "missing name" ) unless name
 
   type = /_data|_url$/.match( name.text ) ? "wfs" : "wms"
 
-  layers << {   
+  layers << {
     name: name.text,
     namespace: namespace.text,
     type: type,
-    files: files, 
-    other_files: other_files 
+    files: files,
+    other_files: other_files
   }
-end 
+end
 
 
 if options[:databag]
@@ -605,12 +578,12 @@ elsif options[:rename]
   rename_layer( options, layers.first[:files], layers.first[:other_files] )
 
 elsif options[:remove]
-  remove_layer( options, layers ) 
+  remove_layer( options, layers )
 
 elsif options[:print] or options[:print2]
-  # sort 
-  layers.sort! do |a,b| 
-    a[:name].downcase <=> b[:name].downcase 
+  # sort
+  layers.sort! do |a,b|
+    a[:name].downcase <=> b[:name].downcase
   end
   # and print to stdout
   layers.each() do |layer|
