@@ -442,7 +442,7 @@ end
 
 def rename_layer( options, layers )
 
-	puts "rename!! #{options[:rename]} #{options[:rename_target]}" 
+	puts "rename!! #{options[:rename].at( 0)} -> #{options[:rename].at(1)}" 
 
   # find the layer
   layer = layers.select() do |candidate|
@@ -479,7 +479,6 @@ def rename_layer( options, layers )
     data << gsobjects['layer'][:xml]
   end
 end
-
 
 
 def remove_layer( options, layers )
@@ -540,11 +539,15 @@ options = {}
 OptionParser.new do |opts|
   opts.banner = "Usage: example.rb [options]"
   # actions
-  opts.on('-p', '', 'print to stdout') { |v| options[:print] = true }
-  opts.on('-2', '', 'print to stdout with shorter format') { |v| options[:print2] = true }
-  opts.on('-b', '', 'create databag') { |v| options[:databag] = true }
-  opts.on('-m', '', 'merge geoserver config') { |v| options[:merge] = true }
-  opts.on('-r', '', '--rename NAME NAME') { |v1,v2| options[:rename] = v1; options[:rename_target] = v2 }
+  opts.on('-p', 'print to stdout') { |v| options[:print] = true }
+  opts.on('-2', 'print to stdout with shorter format') { |v| options[:print2] = true }
+  opts.on('-b', 'create databag') { |v| options[:databag] = true }
+  opts.on('-m', 'merge geoserver config') { |v| options[:merge] = true }
+
+
+  # opts.on( '-l', '--list a,b,c', Array, "List of parameters" ) do|l|
+  opts.on('-r', '--rename NAME,NAME', Array) { |v| options[:rename] = v }
+
   opts.on('-x', '', '--remove NAME') { |v| options[:remove] = v }
   # directories
   opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
