@@ -110,13 +110,20 @@ end
 
 def print_duplicate_oids( oids, options)
 
+  # select oids with more than one file
+  oids_with_multiple_files = oids.keys.select() do |oid|
+    oids[ oid].length > 1
+  end
 
-#   path2 = oids[ oid.text ].first[:path]
-#   puts "duplicate object id #{relative_path(path, options[:source_dir])} (#{relative_path(path2, options[:source_dir])})"
-# 
+  # print them
+  oids_with_multiple_files.each() do |oid|
+    print "#{oid} "
+    oids[ oid].select() do |object|
 
-
-
+      print " #{relative_path( object[:path], options[:source_dir])} "
+    end
+    puts
+  end
 end
 
 
@@ -220,13 +227,12 @@ end
 def trace_layer_oids( oids, options )
 
   # find the set of objects that are layers
-  layer_keys = oids.keys.select() { |oid|
-
-    # Predicate - Is one of the objects associated with the oid a layer? 
+  layer_keys = oids.keys.select() do |oid|
+    # Predicate - Is one of the objects/files associated with the oid a layer? 
     oids[ oid].select() do |object|
       layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
     end .any?
-  }
+  end
 
   # and recursively scan the dependencies according to the ids
   layer_keys.each() do | oid |
@@ -536,8 +542,12 @@ OptionParser.new do |opts|
 end.parse!
 
 
+oids = create_oid_mappings( options )
+
+print_duplicate_oids( oids, options)
+
 layers = []
-trace_layer_oids( create_oid_mappings( options ), options ) do  |files, other_files|
+trace_layer_oids( oids, options ) do  |files, other_files|
 
   # Gather up a list of layers with their resources to ease processing
 
@@ -565,6 +575,8 @@ trace_layer_oids( create_oid_mappings( options ), options ) do  |files, other_fi
     other_files: other_files
   }
 end
+
+
 
 
 if options[:databag]
