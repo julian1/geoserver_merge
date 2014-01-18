@@ -115,17 +115,13 @@ def print_duplicate_oids( oids, options)
   # It would be really nice to filter global web cache, and layer which are expected to match. 
   # length has to be 2. 
 
-  oids_with_multiple_files.each() do |oid|
-
-      
-
-      if REXML::XPath.first( oids[ oid].at( 2)[:xml], "/layer" )
-        puts "second is layer" 
-      end
-      if REXML::XPath.first( oids[ oid].first[:xml], "/GeoServerTileLayer" )
-        puts "first is gwc" 
-      end
-
+  oids_with_multiple_files = oids_with_multiple_files.delete_if() do |oid|
+      oids[ oid].length == 2 \
+      and \
+      (REXML::XPath.first( oids[ oid].at( 0)[:xml], "/layer" )\
+        and REXML::XPath.first( oids[ oid].at( 1)[:xml], "/GeoServerTileLayer" )) or\
+      (REXML::XPath.first( oids[ oid].at( 1)[:xml], "/layer" )\
+        and REXML::XPath.first( oids[ oid].at( 0)[:xml], "/GeoServerTileLayer" ))
   end
 
   # print them
