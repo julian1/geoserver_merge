@@ -4,28 +4,32 @@
 
 # Examples:
 #
-# print all layers 
-# ./merge_geoserver_config.rb  -p -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/
-#
-# print layer 'JBmeteorological_data'
-# ./merge_geoserver_config.rb  -p -l JBmeteorological_data -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ 
-#
-# rename a layer leaving schema name unchanged
-# ./merge_geoserver_config.rb  -s $SRC  -l argo_platform_nominal_cycle -r argo_platform_nominal_cycle_data
-#
-# merge layer srs_occ into tmp
-# ./merge_geoserver_config.rb -m -l srs_occ  -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
-#
-# merge layer srs_occ into tmp changing jndi reference
-# ./merge_geoserver_config.rb -m -l srs_occ -j java:comp/env/jdbc/legacy    -s ../imos_geoserver_config/geoserver.imos.org.au_data_dir/ -d tmp/
 #
 # SRC=~/imos/services/imos_geoserver_config/geoserver.imos.org.au_data_dir/
 # DEST=/home/meteo/imos/projects/chef/geoserver-123/
 # LAYER=soop_sst_1min_vw
-# ./merge_geoserver_config.rb -p -l $LAYER -s $SRC
+#
+# print all layers 
+# ./merge_geoserver_config.rb -s $SRC -p
+#
+# print layer 'JBmeteorological_data' (MAY WANT TO REMOVE AND JUST USE GREP or OPTION SPECIFIC_
+# ./merge_geoserver_config.rb -s $SRC -p -l JBmeteorological_data 
+#
+# rename a layer leaving schema name unchanged
+# (CHANGE SO THAT R handles both)
+# ./merge_geoserver_config.rb  -s $SRC  -l argo_platform_nominal_cycle -r argo_platform_nominal_cycle_data
+#
+# merge layer srs_occ into directory tmp
+# ./merge_geoserver_config.rb -m -l srs_occ -s $SRC -d tmp/
+#
+# merge layer srs_occ into tmp changing jndi reference
+# ./merge_geoserver_config.rb -m -l srs_occ -j java:comp/env/jdbc/legacy  -s $SRC -d tmp/
+#
+# merge changing workspace ids to match Dest workspace ids
 # ./merge_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff  
 #
-# Note this doesn't copy the workspace level ftl
+# Note merging doesn't copy the workspace level ftl
+#
 
 
 
@@ -224,18 +228,23 @@ def begin_trace_oids( oids, options )
   # start tracing from the layer root keys
   oids.keys.each() do |oid|
 
+    # Ok, there's an issue
     # only concerned with tracing from a layer
-    next unless ( oid =~ /LayerInfoImpl.*/ )
+
+
+#    next unless ( oid =~ /LayerInfoImpl.*/ )
 
     # limit scan to specific layer if specified in options
-    if options[:layer]
-      found = false
+#    if options[:layer]
+#      found = false
+      layer_name = nil
       oids[ oid].each() do |object|
         layer_name = REXML::XPath.first( object[:xml], "/layer/name" )
-        found = layer_name && layer_name.text == options[:layer]
+#        found = layer_name && layer_name.text == options[:layer]
       end
-      next unless found
-    end
+#      next unless found
+      next unless layer_name
+#    end
 
     # do the scan
     files = {} 
