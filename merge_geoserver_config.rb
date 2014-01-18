@@ -295,14 +295,17 @@ end
 def print_layer2( options, files, other_files )
 
   # dump layer useful layer info to stdout
+  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
+  print "#{namespace.text}:" if namespace
   name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
   print "#{name.text}" if name
-  namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
-  print ", #{namespace.text}" if namespace
+
   workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
   print ", #{workspace.text}" if workspace
+
   nativeName = REXML::XPath.first( files['featureType'][:xml], '/featureType/nativeName')
   print ", #{nativeName.text}" if nativeName
+
 
   if files['dataStore']
     node = files['dataStore'][:xml]
