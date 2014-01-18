@@ -35,22 +35,19 @@
 
 # TODO
 
-# Suppress printing of duplicate oids when it's the gwc and the layer.
+# - Suppress printing of duplicate oids when it's the gwc and the layer.
+  # dump duplicate objects to stderr to avoid corrupting databag
 
-# change name geoserver_config_tool
-# remove the layer selection from the scanning of oids
-# see if we can make the -rename take two arguments
-# tidy documentation
+# - change name geoserver_config_tool
+# - see if we can make the -rename take two arguments
+# - tidy documentation
 
 
-# dump duplicate objects to stderr to avoid corrupting databag
+# - read the namespace and workspace from the destination directory - to allow text overide
+# - ability to ignore if the layer is disabled
+# - perhaps ability to change schema
+# - perhaps, should read the target namespace and target workspaces and use those entries by default.
 
-# read the namespace and workspace from the destination directory - to allow text overide
-# ability to ignore if the layer is disabled
-# perhaps ability to change schema
-# perhaps, should read the target namespace and target workspaces and use those entries by default.
-
-# ok, we got comthing working
 
 require 'rexml/document'
 require 'rexml/xpath'
@@ -115,12 +112,27 @@ def print_duplicate_oids( oids, options)
     oids[ oid].length > 1
   end
 
+  # It would be really nice to filter global web cache, and layer which are expected to match. 
+  # length has to be 2. 
+
+  oids_with_multiple_files.each() do |oid|
+
+      if REXML::XPath.first( oids[ oid].first[:xml], "/layer" )
+        puts "first is layer" 
+      end
+      if REXML::XPath.first( oids[ oid].first[:xml], "/GeoServerTileLayer" )
+        puts "first is gwc" 
+      end
+
+  end
+
   # print them
   oids_with_multiple_files.each() do |oid|
     print "#{oid} "
-    oids[ oid].select() do |object|
+    oids[ oid].each() do |object|
 
       print " #{relative_path( object[:path], options[:source_dir])} "
+
     end
     puts
   end
