@@ -163,12 +163,10 @@ def trace_oid( oids, oid, depth, options, files, other_files )
             Dir["#{fname}*"].each do |shapefile|
               other_files << shapefile
             end
-
           else
             # other file types
             other_files << fullpath
           end	
-
         end
       end
 
@@ -208,7 +206,6 @@ def trace_oid( oids, oid, depth, options, files, other_files )
           other_files << fullpath
         end
       end
-
     else 
         maybe_abort( "ERROR: #{pad(depth+1)} +UNKNOWN element #{path}", options)
     end
@@ -222,8 +219,7 @@ def trace_oid( oids, oid, depth, options, files, other_files )
 end
 
 
-
-def begin_trace_oids( oids, options )
+def trace_layer_oids( oids, options )
 
   # find the objects that are layers
   layer_keys = oids.keys.select() { |oid|
@@ -236,28 +232,23 @@ def begin_trace_oids( oids, options )
     layer_name
   } 
 
-  # and recursively scan the dependencies
+  # and recursively scan the dependencies according to the ids
   layer_keys.each() do | oid |
     files = {} 
     other_files = []
     trace_oid( oids, oid, 0, options, files, other_files )
-
     yield files, other_files
   end
-
 end
 
 
 def print_layer( options, files, other_files )
 
   # dump layer useful layer info to stdout
-
   name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
   print "#{name.text}" if name
-
   namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
   print ", ns->#{namespace.text}" if namespace
-
   workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
   print ", ws->#{workspace.text}" if workspace
 
@@ -275,20 +266,16 @@ def print_layer( options, files, other_files )
 
   if files['dataStore']
     node = files['dataStore'][:xml]
-
     jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
     print ", jndiref->#{jndi.text}" if jndi
-
     schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
     print ", schema->#{schema.text}" if schema
-
     url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
     print ", url->#{url.text}" if url
   end
 
   if files['coverageStore']
     node = files['coverageStore'][:xml]
-
     url = REXML::XPath.first( node, "/coverageStore/url" )
     print ", coverage_url->#{url.text}" if url
   end
@@ -298,30 +285,24 @@ def print_layer( options, files, other_files )
 end
 
 
-def print_short_layer( options, files, other_files )
+def print_layer2( options, files, other_files )
 
   # dump layer useful layer info to stdout
   name = REXML::XPath.first( files['layer'][:xml], '/layer/name')
   print "#{name.text}" if name
-
   namespace = REXML::XPath.first( files['namespace'][:xml], '/namespace/prefix')
   print ", #{namespace.text}" if namespace
-
   workspace = REXML::XPath.first( files['workspace'][:xml], '/workspace/name')
   print ", #{workspace.text}" if workspace
-
   nativeName = REXML::XPath.first( files['featureType'][:xml], '/featureType/nativeName')
   print ", #{nativeName.text}" if nativeName
 
   if files['dataStore']
     node = files['dataStore'][:xml]
-
     jndi = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='jndiReferenceName']") 
     print ", jndiref->#{jndi.text}" if jndi
-
     schema = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='schema']") 
     print ", schema->#{schema.text}" if schema
-
     url = REXML::XPath.first( node, "/dataStore/connectionParameters/entry[@key='url']" )
     print ", url->#{url.text}" if url
   end
@@ -331,7 +312,6 @@ def print_short_layer( options, files, other_files )
     url = REXML::XPath.first( node, "/coverageStore/url" )
     print ", coverage_url->#{url.text}" if url
   end
-
 #  print ", files: #{files.length} others: #{other_files.length}"
   puts
 end
@@ -582,7 +562,7 @@ end.parse!
 
 layers = []
 
-begin_trace_oids( create_oid_mappings( options ), options ) do  |files, other_files|
+trace_layer_oids( create_oid_mappings( options ), options ) do  |files, other_files|
 
   # Gather up a list of layers with their resources to ease processing
 
@@ -635,7 +615,7 @@ elsif options[:print] or options[:print2]
   # and print to stdout
   layers.each() do |layer|
     print_layer( options, layer[:files], layer[:other_files] ) if options[:print]
-    print_short_layer( options, layer[:files], layer[:other_files] ) if options[:print2]
+    print_layer2( options, layer[:files], layer[:other_files] ) if options[:print2]
   end
 
 elsif options[:merge]
