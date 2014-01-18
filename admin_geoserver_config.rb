@@ -9,23 +9,23 @@
 # LAYER=soop_sst_1min_vw
 #
 # print all layers
-# ./merge_geoserver_config.rb -s $SRC -p
+# ./admin_geoserver_config.rb -s $SRC -p
 #
 # print layer 'JBmeteorological_data' (MAY WANT TO REMOVE AND JUST USE GREP or OPTION SPECIFIC_
-# ./merge_geoserver_config.rb -s $SRC -p -l JBmeteorological_data
+# ./admin_geoserver_config.rb -s $SRC -p -l JBmeteorological_data
 #
 # rename a layer leaving schema name unchanged
 # (CHANGE SO THAT R handles both)
-# ./merge_geoserver_config.rb  -s $SRC  -l argo_platform_nominal_cycle -r argo_platform_nominal_cycle_data
+# ./admin_geoserver_config.rb  -s $SRC  -l argo_platform_nominal_cycle -r argo_platform_nominal_cycle_data
 #
 # merge layer srs_occ into directory tmp
-# ./merge_geoserver_config.rb -m -l srs_occ -s $SRC -d tmp/
+# ./admin_geoserver_config.rb -m -l srs_occ -s $SRC -d tmp/
 #
 # merge layer srs_occ into tmp changing jndi reference
-# ./merge_geoserver_config.rb -m -l srs_occ -j java:comp/env/jdbc/legacy  -s $SRC -d tmp/
+# ./admin_geoserver_config.rb -m -l srs_occ -j java:comp/env/jdbc/legacy  -s $SRC -d tmp/
 #
 # merge changing workspace ids to match Dest workspace ids
-# ./merge_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w 1234 -n 5678 
+# ./admin_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w 1234 -n 5678 
 #
 # Note merging doesn't copy the workspace level ftl
 #
@@ -250,8 +250,9 @@ def trace_layer_oids( oids, options )
   end
 end
 
-#### rather than have other_gsobjects, why not just add the array list to the
-### main  hash 
+### rather than have other_gsobjects, why not just add the array list to the the 
+### main. Because the structure is completely different.  gsobjects have :xml and :path 
+###  and this would prevent iterating/selecting the main objects easily
 
 def print_layer( options, gsobjects, other_gsobjects )
 
@@ -303,13 +304,10 @@ def print_layer2( options, gsobjects, other_gsobjects )
   print "#{namespace.text}:" if namespace
   name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
   print "#{name.text}" if name
-
   workspace = REXML::XPath.first( gsobjects['workspace'][:xml], '/workspace/name')
   print ", #{workspace.text}" if workspace
-
   nativeName = REXML::XPath.first( gsobjects['featureType'][:xml], '/featureType/nativeName')
   print ", #{nativeName.text}" if nativeName
-
 
   if gsobjects['dataStore']
     node = gsobjects['dataStore'][:xml]
@@ -329,7 +327,6 @@ def print_layer2( options, gsobjects, other_gsobjects )
 #  print ", gsobjects: #{gsobjects.length} others: #{other_gsobjects.length}"
   puts
 end
-
 
 
 def merge_layer( options, gsobjects, other_gsobjects )
@@ -483,7 +480,6 @@ def remove_layer( options, layers )
   # they are referenced by other objects. Eg. multiple layers using a common dataStores
 
   puts "remove layer #{options[:remove]}"
-  abort( 'do not -x remove with use -l option') if options[:layer]
 
   # build a a record of file counts
   counts = {}
@@ -546,7 +542,6 @@ OptionParser.new do |opts|
   opts.on('-s', '--src_directory NAME', 'source dir') { |v| options[:source_dir] = v }
   opts.on('-d', '--dest_directory NAME', 'destination to copy to') { |v| options[:dest_dir] = v }
   # other control
-  opts.on('-l', '--layer NAME', 'specific layer - otherwise all layers') { |v| options[:layer] = v }
   ## opts.on('-f', '--layer NAME', 'get layers to process from a list') { |v| options[:layer] = v }
   opts.on('-j', '--jndirref NAME', 'change jndi ref') { |v| options[:jndi_reference] = v }
   opts.on('-w', '--workspace NAME', 'change workspace id') { |v| options[:workspace_id] = v }
