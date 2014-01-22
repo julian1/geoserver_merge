@@ -15,7 +15,7 @@
 # ./admin_geoserver_config.rb -s $SRC -p -l JBmeteorological_data
 #
 # rename a layer leaving schema, source table etc unchanged
-# ./admin_geoserver_config.rb -s $SRC -r xbt_realtime,zzz
+# ./admin_geoserver_config.rb -s $SRC -r xbt_realtime,xbt_realtime_data
 #
 # merge layer srs_occ into directory tmp
 # ./admin_geoserver_config.rb -m -l srs_occ -s $SRC -d tmp/
