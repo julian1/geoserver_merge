@@ -69,7 +69,7 @@ end
 
 
 def maybe_abort( msg, options )
-  abort( msg) unless options[:print]
+  abort( msg) unless options[:permissive]
   puts msg
 end
 
@@ -305,8 +305,11 @@ def print_layer2( options, gsobjects, other_gsobjects )
   print "#{name.text}" if name
   workspace = REXML::XPath.first( gsobjects['workspace'][:xml], '/workspace/name')
   print ", #{workspace.text}" if workspace
-  nativeName = REXML::XPath.first( gsobjects['featureType'][:xml], '/featureType/nativeName')
-  print ", #{nativeName.text}" if nativeName
+
+  if gsobjects['featureType']
+    nativeName = REXML::XPath.first( gsobjects['featureType'][:xml], '/featureType/nativeName')
+    print ", #{nativeName.text}" if nativeName
+  end
 
   if gsobjects['dataStore']
     node = gsobjects['dataStore'][:xml]
@@ -559,11 +562,15 @@ OptionParser.new do |opts|
   opts.on('-2', 'print to stdout with shorter format') { |v| options[:print2] = true }
   opts.on('-3', 'print metadata backlinks') { |v| options[:print_metadata] = true }
 
+
+  opts.on('-permissive', 'print to stdout') { |v| options[:permissive] = true }
+
   opts.on('-b', 'create databag') { |v| options[:databag] = true }
   opts.on('-m', 'merge geoserver config') { |v| options[:merge] = true }
 
   # opts.on( '-l', '--list a,b,c', Array, "List of parameters" ) do|l|
   opts.on('-r', '--rename NAME,NAME', Array) { |v| options[:rename] = v.at( 0); options[:rename_target] = v.at( 1) }
+
 
   # arg must look like this -r u1,u2 
   opts.on('-x', '--remove NAME') { |v| options[:remove] = v }
@@ -589,11 +596,11 @@ trace_layer_oids( oids, options ) do  |gsobjects, other_gsobjects|
 
   # validate we have the expected gsobjects
   # this logic needs to be improved
-	abort( "missing namespace file") unless gsobjects['namespace']
-	abort( "missing layer file") unless gsobjects['layer']
-	abort( "missing featureType or coverage file") unless gsobjects['featureType'] or gsobjects['coverage']
-	abort( "missing dataStore file") unless gsobjects['dataStore']
-	abort( "missing workspace file") unless gsobjects['workspace']
+	maybe_abort( "ERROR missing namespace file", options) unless gsobjects['namespace']
+	maybe_abort( "ERROR missing layer file", options) unless gsobjects['layer']
+	maybe_abort( "ERROR missing featureType or coverage file", options) unless gsobjects['featureType'] or gsobjects['coverage']
+	maybe_abort( "ERROR missing dataStore file", options) unless gsobjects['dataStore']
+	maybe_abort( "ERROR missing workspace file", options) unless gsobjects['workspace']
 #    elsif REXML::XPath.first( node, "/workspace" )
 #    elsif REXML::XPath.first( node, "/coverage" )
   # extract some common fields common to all layers
