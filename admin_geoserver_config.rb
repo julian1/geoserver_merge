@@ -298,7 +298,7 @@ end
 
 def print_layer2( options, gsobjects, other_gsobjects )
 
-  # dump layer useful layer info to stdout
+  # dump useful layer info to stdout - shortform
   namespace = REXML::XPath.first( gsobjects['namespace'][:xml], '/namespace/prefix')
   print "#{namespace.text}:" if namespace
   name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
@@ -326,6 +326,23 @@ def print_layer2( options, gsobjects, other_gsobjects )
 #  print ", gsobjects: #{gsobjects.length} others: #{other_gsobjects.length}"
   puts
 end
+
+
+def print_layer_metadata_links( options, gsobjects, other_gsobjects )
+
+  # print the layer and associated metadata back-link
+  namespace = REXML::XPath.first( gsobjects['namespace'][:xml], '/namespace/prefix')
+  print "#{namespace.text}:" if namespace
+  name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
+  print "#{name.text}" if name
+  link = REXML::XPath.first( gsobjects['featureType'][:xml], '/featureType/metadataLinks/metadataLink/content')
+  print " -> #{link.text}" if link
+  puts
+end
+
+
+
+
 
 
 def merge_layer( options, gsobjects, other_gsobjects )
@@ -540,6 +557,8 @@ OptionParser.new do |opts|
   # actions
   opts.on('-p', 'print to stdout') { |v| options[:print] = true }
   opts.on('-2', 'print to stdout with shorter format') { |v| options[:print2] = true }
+  opts.on('-3', 'print metadata backlinks') { |v| options[:print_metadata] = true }
+
   opts.on('-b', 'create databag') { |v| options[:databag] = true }
   opts.on('-m', 'merge geoserver config') { |v| options[:merge] = true }
 
@@ -603,7 +622,7 @@ elsif options[:rename]
 elsif options[:remove]
   remove_layer( options, layers )
 
-elsif options[:print] or options[:print2]
+elsif options[:print] or options[:print2] or options [:print_metadata]
   # sort
   layers.sort! do |a,b|
     a[:name].downcase <=> b[:name].downcase
@@ -612,6 +631,7 @@ elsif options[:print] or options[:print2]
   layers.each() do |layer|
     print_layer( options, layer[:gsobjects], layer[:other_gsobjects] ) if options[:print]
     print_layer2( options, layer[:gsobjects], layer[:other_gsobjects] ) if options[:print2]
+    print_layer_metadata_links( options, layer[:gsobjects], layer[:other_gsobjects] ) if options [:print_metadata]
   end
 
 elsif options[:merge]
