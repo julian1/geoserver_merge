@@ -349,21 +349,16 @@ end
 
 def update_metadata_link( options, gsobjects, other_gsobjects )
 
-  puts "update metadata link to '#{options[:metadata_link]}'"
+#  puts "update metadata link to '#{options[:metadata_link]}'"
 
-#  return
-
-  # print the layer and associated metadata back-link
-#   namespace = REXML::XPath.first( gsobjects['namespace'][:xml], '/namespace/prefix')
-#   print "#{namespace.text}:" if namespace
-#   name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
-#   print "#{name.text}" if name
-# 
+#{options[:metadata_link]}
 
   node = gsobjects['featureType']
 
+  unless REXML::XPath.first( node[:xml], '/featureType/metadataLinks')
+    puts "creating new metadata link node"
+    meta = REXML::Document.new <<EOF
 
-  meta = REXML::Document.new <<EOF
   <metadataLinks>
     <metadataLink>
       <type>text/xml</type>
@@ -373,19 +368,24 @@ def update_metadata_link( options, gsobjects, other_gsobjects )
   </metadataLinks>
 EOF
 
-  featureType = REXML::XPath.first( node[:xml], '/featureType')
-  featureType.add_element meta 
+#previous_sibling
 
- # el = someelement.add_element "myel"
-#   link = REXML::XPath.first( node[:xml], '/featureType/metadataLinks/metadataLink/content')
-#   abort( "no metadatalink content!!" ) unless link
-# 
-#   link.text = options[:metadata_link]
-# 
-#   # note that this library correctly escapes,
-#   puts "now -> #{link.text}" if link
+    # REXML::XPath.first( node[:xml], '/featureType').add_element meta 
+   # REXML::XPath.first( node[:xml], '/featureType/keywords').insert_after meta 
 
+    keywords = REXML::XPath.first( node[:xml], '/featureType/keywords')
 
+    REXML::XPath.first( node[:xml], '/featureType').insert_after( keywords, meta ) 
+
+#   else
+#     puts "updating metadata link node"
+#     link = REXML::XPath.first( node[:xml], '/featureType/metadataLinks/metadataLink/content')
+#     abort( "no metadatalink content!!" ) unless link
+#     # set the link text
+#     link.text = options[:metadata_link]
+  end
+
+  # write the file
   File.open( node[:path],"w") do |data|
     # data << node[:xml]
     data << node[:xml]
