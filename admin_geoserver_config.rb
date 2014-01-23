@@ -5,7 +5,7 @@
 # Examples:
 #
 # SRC=~/imos/services/imos_geoserver_config/geoserver.imos.org.au_data_dir/
-# DEST=/home/meteo/imos/projects/chef/geoserver-123/
+# DEST=/home/meteo/imos/tmp/geoserver
 # LAYER=soop_sst_1min_vw
 #
 # print all layers
@@ -17,14 +17,15 @@
 # rename a layer leaving schema, source table etc unchanged
 # ./admin_geoserver_config.rb -s $SRC -r xbt_realtime,xbt_realtime_data
 #
-# merge layer srs_occ into directory tmp
-# ./admin_geoserver_config.rb -m -l srs_occ -s $SRC -d tmp/
+# merge layer installation_summary from into directory dest
+#  ./admin_geoserver_config.rb -s $SRC -d $DEST -permissive -m installation_summary
 #
-# merge layer srs_occ into tmp changing jndi reference
-# ./admin_geoserver_config.rb -m -l srs_occ -j java:comp/env/jdbc/legacy  -s $SRC -d tmp/
+#
 #
 # merge changing workspace ids to match Dest workspace ids
-# ./admin_geoserver_config.rb -m -l $LAYER -s $SRC  -d $DEST -j java:comp/env/jdbc/legacy_read   -w 1234 -n 5678 
+# ./admin_geoserver_config.rb   -s $SRC -d $DEST -permissive  -m installation_summary  -w WorkspaceInfoImpl-5f0a648d:1428d0d11a9:-8000 -n NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff -j java:comp/env/jdbc/legacy_read
+#
+#
 #
 # Note merging doesn't copy the workspace level ftl
 #
@@ -331,6 +332,8 @@ def print_layer2( options, gsobjects, other_gsobjects )
 end
 
 
+
+
 def print_layer_metadata_links( options, gsobjects, other_gsobjects )
 
   # print the layer and associated metadata back-link
@@ -344,6 +347,58 @@ def print_layer_metadata_links( options, gsobjects, other_gsobjects )
 end
 
 
+def update_metadata_link( options, gsobjects, other_gsobjects )
+
+  puts "update metadata link to '#{options[:metadata_link]}'"
+
+#  return
+
+  # print the layer and associated metadata back-link
+#   namespace = REXML::XPath.first( gsobjects['namespace'][:xml], '/namespace/prefix')
+#   print "#{namespace.text}:" if namespace
+#   name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
+#   print "#{name.text}" if name
+# 
+
+  node = gsobjects['featureType']
+
+
+  meta = REXML::Document.new <<EOF
+  <metadataLinks>
+    <metadataLink>
+      <type>text/xml</type>
+      <metadataType>TC211</metadataType>
+      <content></content>
+    </metadataLink>
+  </metadataLinks>
+EOF
+
+  featureType = REXML::XPath.first( node[:xml], '/featureType')
+  featureType.add_element meta 
+
+ # el = someelement.add_element "myel"
+#   link = REXML::XPath.first( node[:xml], '/featureType/metadataLinks/metadataLink/content')
+#   abort( "no metadatalink content!!" ) unless link
+# 
+#   link.text = options[:metadata_link]
+# 
+#   # note that this library correctly escapes,
+#   puts "now -> #{link.text}" if link
+
+
+  File.open( node[:path],"w") do |data|
+    # data << node[:xml]
+    data << node[:xml]
+  end
+
+end
+
+
+
+
+
+
+
 
 
 
@@ -351,8 +406,9 @@ end
 def merge_layer( options, gsobjects, other_gsobjects )
 
   # Merge a layer from one config into another updating references
-  puts "--------------"
+  puts "--------merging layer------"
   print_layer( options, gsobjects, other_gsobjects )
+
 
   # loop the main xml gsobjects associated with layer
   gsobjects.keys.each() do |key|
@@ -566,7 +622,10 @@ OptionParser.new do |opts|
   opts.on('-permissive', 'print to stdout') { |v| options[:permissive] = true }
 
   opts.on('-b', 'create databag') { |v| options[:databag] = true }
-  opts.on('-m', 'merge geoserver config') { |v| options[:merge] = true }
+  opts.on('-m', '--merge NAME') { |v| options[:merge_layer] = v }
+  opts.on('-u', '--update-metadata-link NAME,NAME', Array) { |v| 
+    options[:update_metadata_link] = v.at(0); options[:metadata_link] = v.at( 1) 
+  }
 
   # opts.on( '-l', '--list a,b,c', Array, "List of parameters" ) do|l|
   opts.on('-r', '--rename NAME,NAME', Array) { |v| options[:rename] = v.at( 0); options[:rename_target] = v.at( 1) }
@@ -604,6 +663,7 @@ trace_layer_oids( oids, options ) do  |gsobjects, other_gsobjects|
 #    elsif REXML::XPath.first( node, "/workspace" )
 #    elsif REXML::XPath.first( node, "/coverage" )
   # extract some common fields common to all layers
+
   namespace = REXML::XPath.first( gsobjects['namespace'][:xml], '/namespace/prefix')
   name = REXML::XPath.first( gsobjects['layer'][:xml], '/layer/name')
 
@@ -641,10 +701,24 @@ elsif options[:print] or options[:print2] or options [:print_metadata]
     print_layer_metadata_links( options, layer[:gsobjects], layer[:other_gsobjects] ) if options [:print_metadata]
   end
 
-elsif options[:merge]
-  layers.each() do |layer|
-    merge_layer( options, layer[:gsobjects], layer[:other_gsobjects] )
-  end
+elsif options[:merge_layer]
+  puts "looking for layer '#{options[:merge_layer]}'"
+  layer = layers.select() do |candidate|
+    candidate[:name] == options[:merge_layer]
+  end.first() 
+  abort( "can't find layer '#{options[:merge_layer]}'") unless layer
+  merge_layer( options, layer[:gsobjects], layer[:other_gsobjects] )
+
+elsif options[:update_metadata_link]
+  puts "looking for layer '#{options[:update_metadata_link]}'"
+  layer = layers.select() do |candidate|
+    candidate[:name] == options[:update_metadata_link]
+  end.first() 
+  abort( "can't find layer '#{options[:update_metadata_link]}'") unless layer
+
+  update_metadata_link( options, layer[:gsobjects], layer[:other_gsobjects] )
 end
+
+
 
 
