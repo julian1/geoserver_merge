@@ -351,13 +351,11 @@ def update_metadata_link( options, gsobjects, other_gsobjects )
 
 #  puts "update metadata link to '#{options[:metadata_link]}'"
 
-#{options[:metadata_link]}
-
   node = gsobjects['featureType']
 
   unless REXML::XPath.first( node[:xml], '/featureType/metadataLinks')
     puts "creating new metadata link node"
-    meta = REXML::Document.new <<EOF
+    meta = REXML::Document.new <<-EOF
 
   <metadataLinks>
     <metadataLink>
@@ -366,16 +364,20 @@ def update_metadata_link( options, gsobjects, other_gsobjects )
       <content></content>
     </metadataLink>
   </metadataLinks>
-EOF
+    EOF
 
-#previous_sibling
-
-    # REXML::XPath.first( node[:xml], '/featureType').add_element meta 
-   # REXML::XPath.first( node[:xml], '/featureType/keywords').insert_after meta 
-
+    # insert node after the keywords
     keywords = REXML::XPath.first( node[:xml], '/featureType/keywords')
-
     REXML::XPath.first( node[:xml], '/featureType').insert_after( keywords, meta ) 
+
+    # write the file
+    File.open( node[:path],"w") do |data|
+      # data << node[:xml]
+      data << node[:xml]
+    end
+
+    node[:xml] = REXML::Document.new File.new( node[:xml] )
+
 
 #   else
 #     puts "updating metadata link node"
@@ -384,6 +386,12 @@ EOF
 #     # set the link text
 #     link.text = options[:metadata_link]
   end
+
+  puts "updating link text"
+  link = REXML::XPath.first( node[:xml], '/featureType/metadataLinks/metadataLink/content')
+  abort( "no metadatalink content!!" ) unless link
+  link.text = options[:metadata_link]
+
 
   # write the file
   File.open( node[:path],"w") do |data|
