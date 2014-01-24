@@ -224,6 +224,9 @@ def trace_oid( oids, oid, depth, options, gsobjects, other_gsobjects )
 
     # find the sub objects this doc refers to
     # and process them
+
+#    puts "doing '#{object[:path]}'"
+
     REXML::XPath.each( object[:xml], "/*/*/id" ) do |e|
       trace_oid( oids, e.text , depth + 1, options, gsobjects, other_gsobjects )
     end
@@ -353,9 +356,10 @@ def update_metadata_link( options, gsobjects, other_gsobjects )
 
   node = gsobjects['featureType']
 
+  # if we haven't got a metadataLinks node then add one
   unless REXML::XPath.first( node[:xml], '/featureType/metadataLinks')
     puts "creating new metadata link node"
-    meta = REXML::Document.new <<-EOF
+    text = <<-EOF
 
   <metadataLinks>
     <metadataLink>
@@ -365,26 +369,17 @@ def update_metadata_link( options, gsobjects, other_gsobjects )
     </metadataLink>
   </metadataLinks>
     EOF
+    text = text.chomp
 
     # insert node after the keywords
     keywords = REXML::XPath.first( node[:xml], '/featureType/keywords')
-    REXML::XPath.first( node[:xml], '/featureType').insert_after( keywords, meta ) 
+    REXML::XPath.first( node[:xml], '/featureType').insert_after( keywords, REXML::Document.new( text) ) 
 
-    # write the file
+    # we have to save the file, and reopen it again to be able to target the content
     File.open( node[:path],"w") do |data|
-      # data << node[:xml]
       data << node[:xml]
     end
-
-    node[:xml] = REXML::Document.new File.new( node[:xml] )
-
-
-#   else
-#     puts "updating metadata link node"
-#     link = REXML::XPath.first( node[:xml], '/featureType/metadataLinks/metadataLink/content')
-#     abort( "no metadatalink content!!" ) unless link
-#     # set the link text
-#     link.text = options[:metadata_link]
+    node[:xml] = REXML::Document.new File.new( node[:path] )
   end
 
   puts "updating link text"
@@ -394,6 +389,7 @@ def update_metadata_link( options, gsobjects, other_gsobjects )
 
 
   # write the file
+  puts "writing file #{node[:path]}"
   File.open( node[:path],"w") do |data|
     # data << node[:xml]
     data << node[:xml]
