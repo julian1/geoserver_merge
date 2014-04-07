@@ -1,15 +1,18 @@
 #!/usr/bin/ruby
-#
+#  -j java:comp/env/jdbc/harvest_read
 # Tool to print, merge, and generate chef/nagios databags for geoserver layers
 #
 # Examples:
 #
-# SRC=~/imos/services/imos_geoserver_config/geoserver.imos.org.au_data_dir/
-# DEST=/home/meteo/imos/tmp/geoserver
+# SRC=/home/meteo/imos/services/geoserver.imos.org.au_data_dir/
+# DEST=/home/meteo/imos/projects/chef/geoserver-config/
 # LAYER=soop_sst_1min_vw
 #
 # print all layers
 # ./admin_geoserver_config.rb -s $SRC -p
+#
+# wfs layers
+# ./admin_geoserver_config.rb -s $SRC -2 | grep _data | sed 's/,.*//'
 #
 # print layer 'JBmeteorological_data' (MAY WANT TO REMOVE AND JUST USE GREP or OPTION SPECIFIC_
 # ./admin_geoserver_config.rb -s $SRC -p -l JBmeteorological_data
