@@ -77,28 +77,18 @@ result = []
 # denormalize layers
 layers.each() do |layer_id,layer|
 
-	puts "processing #{layer[:name]}"
-
-	feature = features[layer[:feature_id]]
 	# raise "no feature '#{layer[:feature_id]}' for layer '#{layer[:name]}'" unless feature
-	if feature
+	if features[layer[:feature_id]]
+		feature = features[layer[:feature_id]]
 		namespace = namespaces[feature[:namespace_id]]
 		raise "no namespace #{feature[:namespace_id]} for feature #{layer[:name]}" unless namespace
-
 		# puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
 		result << { prefix: namespace[:prefix], name: layer[:name], enabled: layer[:enabled] }
-
 	elsif coverages[layer[:feature_id]]
 		coverage = coverages[layer[:feature_id]]
-
-		# puts "** coverage is #{coverage}" 
-
 		namespace = namespaces[coverage[:namespace_id]]
 		raise "no namespace #{coverage [:namespace_id]} for coverage #{layer[:name]}" unless namespace
-
-
 		result << { prefix: namespace[:prefix], name: layer[:name], enabled: layer[:enabled] }
-
 	else
 
 		raise "no feature or coverage '#{layer[:feature_id]}' for layer '#{layer[:name]}'" 
