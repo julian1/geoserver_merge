@@ -4,10 +4,12 @@
 
 def decode_geoserver_layers( dir )
 
+  # decode a geoserver config directory
+  # returns [{:prefix=>"", :name=>"", :enabled=>bool}]
+  # includes
   require 'find'
   require 'fileutils'
   require 'nokogiri'
-
 
   # mappings between objects
   layers = {} 
@@ -75,9 +77,8 @@ def decode_geoserver_layers( dir )
     end
   end
 
-  result = []
-
   # denormalize layers
+  result = []
   layers.each() do |layer_id,layer|
     if features[layer[:feature_id]]
       feature = features[layer[:feature_id]]
@@ -98,6 +99,7 @@ def decode_geoserver_layers( dir )
     end
   end
 
+  # return layers
   result
 end
 
