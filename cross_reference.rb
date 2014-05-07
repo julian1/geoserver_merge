@@ -1,12 +1,16 @@
 
+# using nokogiri rather than rexml w
+
 require 'find'
 require 'fileutils'
 require 'nokogiri'
 
-tmp_dir="/home/meteo/imos/projects/geoserver-config/" 
+#tmp_dir="/home/meteo/imos/projects/geoserver-config/" 
+tmp_dir="/home/meteo/imos/projects/geoserver-config-static/" 
 
 layers = {} 
 features = {} 
+coverages = {} 
 namespaces = {} 
 
 Find.find(tmp_dir) do |path|
@@ -47,6 +51,20 @@ Find.find(tmp_dir) do |path|
 		features[feature_id.inner_html] = { name: name.inner_html, namespace_id: namespace_id.inner_html } 
 	end
 
+	# coverages
+	# <coverage> <id>CoverageInfoImpl--62a9b58b:144dcb81441:-7ffe</id>
+	coverage_id = xml.at_xpath("/coverage/id")
+	if coverage_id 
+ 		name = xml.at_xpath("/coverage/name")
+ 		raise "coverage missing name" unless name
+ 		namespace_id = xml.at_xpath("/coverage/namespace/id")
+ 		raise "coverage missing namespace" unless namespace_id
+		# puts "coverage #{coverage_id.inner_html}, name #{name.inner_html}, namespace #{namespace.inner_html}"
+		coverages[coverage_id.inner_html] = { name: name.inner_html, namespace_id: namespace_id.inner_html } 
+	end
+
+
+
 	# namespaces
 	namespace_id = xml.at_xpath("/namespace/id")
 	if namespace_id 
@@ -57,20 +75,29 @@ Find.find(tmp_dir) do |path|
 	end
 end
 
+result = []
 
 # denormalize layers
 layers.each() do |layer_id,layer|
 
+	puts "processing #{layer[:name]}"
+
 	feature = features[layer[:feature_id]]
-	raise "no feature for layer #{layer[:name]}" unless feature
+	raise "no feature '#{layer[:feature_id]}' for layer '#{layer[:name]}'" unless feature
+
+	# may not be a feature if geoserver static
 
 	namespace = namespaces[feature[:namespace_id]]
-	raise "no namespace for feature #{layer[:name]}" unless feature
+	raise "no namespace #{feature[:namespace_id]} for feature #{layer[:name]}" unless feature
 
-	puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
-
-# 		puts " feature #{feature.name}"
+	# puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
+	result << { prefix: namespace[:prefix], name: layer[:name], enabled: layer[:enabled] }
 end
 #
+
+
+result.each() do |v|
+	puts v
+end
 
 
