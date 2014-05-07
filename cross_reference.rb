@@ -8,6 +8,9 @@ require 'nokogiri'
 
 tmp_dir="/home/meteo/imos/projects/geoserver-config/" 
 
+layers = {} 
+features = {} 
+
 Find.find(tmp_dir) do |path|
 
 	# skip directories
@@ -18,27 +21,27 @@ Find.find(tmp_dir) do |path|
 	# decode to xml
 	xml = Nokogiri::XML(File.open(path))
 
-	layers = {} 
 
-	# layer objects
+	# layers
 	layer_id = xml.at_xpath("/layer/id")
 	if layer_id
 		name = xml.at_xpath("/layer/name")
 		raise "layer missing id" unless name
 		feature_id = xml.at_xpath("/layer/resource/id")
 		raise "layer missing feature id" unless feature_id
-
-		puts "layer -> #{name.inner_html}, id #{layer_id.inner_html}, feature_id #{feature_id.inner_html}"
+		# puts "layer -> #{name.inner_html}, id #{layer_id.inner_html}, feature_id #{feature_id.inner_html}"
+		layers[layer_id.inner_html] = { name: name.inner_html, feature_id: feature_id.inner_html } 
 	end
 
+	# feature types
 	feature_id = xml.at_xpath("/featureType/id")
 	if feature_id 
  		name = xml.at_xpath("/featureType/name")
  		raise "feature missing name" unless name
 
+		features[feature_id.inner_html] = { name: name.inner_html  } 
 		puts "feature #{feature_id.inner_html}, name #{name.inner_html}"
 	end
-
 
 #	//xpath_object = load_xml_file(path) #xml_file).at_xpath(path)
 # 	layer_name = Chef::Recipe::XMLHelper::get_xml_value(file, "layer/name")
@@ -49,3 +52,7 @@ Find.find(tmp_dir) do |path|
 
 
 end
+
+	layers.each() do |key,val|
+		puts "layer #{key}, #{val}"
+	end
