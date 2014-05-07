@@ -6,7 +6,7 @@ require 'fileutils'
 
 require 'nokogiri'
 
-tmp_dir="./geoserver-config"
+tmp_dir="/home/meteo/imos/projects/geoserver-config/" 
 
 Find.find(tmp_dir) do |path|
 
