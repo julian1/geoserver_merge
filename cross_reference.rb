@@ -1,9 +1,6 @@
 
-# require 'chef/mixin/shell_out'
 require 'find'
 require 'fileutils'
-#include Chef::Mixin::ShellOut
-
 require 'nokogiri'
 
 tmp_dir="/home/meteo/imos/projects/geoserver-config/" 
@@ -22,6 +19,7 @@ Find.find(tmp_dir) do |path|
 	# decode to xml
 	xml = Nokogiri::XML(File.open(path))
 
+	# extract geoserver objects
 	# layers
 	layer_id = xml.at_xpath("/layer/id")
 	if layer_id
@@ -59,20 +57,19 @@ Find.find(tmp_dir) do |path|
 	end
 end
 
+	# denormalize across lists
+	layers.each() do |layer_id,layer|
 
-# ok, denormalize the layer list ...
+		feature = features[layer[:feature_id]]
+ 		raise "no feature for layer #{layer[:name]}" unless feature
 
-# 
-# 	layers.each() do |key,val|
-# 		puts "layer #{key}, #{val}"
-# 	end
-# 
-# 
-# 	features.each() do |key,val|
-# 		puts "feature #{key}, #{val}"
-# 	end
-# 
-	namespaces.each() do |key,val|
-		puts "namespace #{key}, #{val}"
+		namespace = namespaces[feature[:namespace_id]]
+ 		raise "no namespace for feature #{layer[:name]}" unless feature
+
+		puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
+
+# 		puts " feature #{feature.name}"
 	end
+#
+
 
