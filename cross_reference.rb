@@ -20,21 +20,28 @@ Find.find(tmp_dir) do |path|
 
 
 	# layer objects
-	layer = @xml.at_xpath("/layer/name")
-	if layer
-		id = @xml.at_xpath("/layer/id")
-		raise "missing id" unless id
-		# assert have id
-		puts "layer -> #{layer.inner_html}, id #{id.inner_html}"
-		# need to get the id...
-		
+	layer_id = @xml.at_xpath("/layer/id")
+	if layer_id
+		name = @xml.at_xpath("/layer/name")
+		raise "layer missing id" unless name
+		feature_id = @xml.at_xpath("/layer/resource/id")
+		raise "layer missing feature id" unless feature_id
+
+		puts "layer -> #{name.inner_html}, id #{layer_id.inner_html}, feature_id #{feature_id.inner_html}"
 	end
 
 #	<featureType>
 #  <id>FeatureTypeInfoImpl-2d23ec69:126d477e611:-7e38</id>
-	feature_type = @xml.at_xpath("/featureType/name")
-	if feature_type
-#		puts feature_type.inner_html
+
+	feature_id = @xml.at_xpath("/featureType/id")
+	if feature_id 
+		# we don't even need the name
+
+ 		name = @xml.at_xpath("/featureType/name")
+ 		raise "feature missing name" unless name
+ 	
+
+		puts "feature #{feature_id.inner_html}, name #{name.inner_html}"
 	end
 
 
