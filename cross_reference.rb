@@ -52,7 +52,6 @@ Find.find(tmp_dir) do |path|
 	end
 
 	# coverages
-	# <coverage> <id>CoverageInfoImpl--62a9b58b:144dcb81441:-7ffe</id>
 	coverage_id = xml.at_xpath("/coverage/id")
 	if coverage_id 
  		name = xml.at_xpath("/coverage/name")
@@ -62,8 +61,6 @@ Find.find(tmp_dir) do |path|
 		# puts "coverage #{coverage_id.inner_html}, name #{name.inner_html}, namespace #{namespace.inner_html}"
 		coverages[coverage_id.inner_html] = { name: name.inner_html, namespace_id: namespace_id.inner_html } 
 	end
-
-
 
 	# namespaces
 	namespace_id = xml.at_xpath("/namespace/id")
@@ -83,15 +80,28 @@ layers.each() do |layer_id,layer|
 	puts "processing #{layer[:name]}"
 
 	feature = features[layer[:feature_id]]
-	raise "no feature '#{layer[:feature_id]}' for layer '#{layer[:name]}'" unless feature
+	# raise "no feature '#{layer[:feature_id]}' for layer '#{layer[:name]}'" unless feature
+	if feature
+		namespace = namespaces[feature[:namespace_id]]
+		raise "no namespace #{feature[:namespace_id]} for feature #{layer[:name]}" unless feature
 
-	# may not be a feature if geoserver static
+		# puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
+		result << { prefix: namespace[:prefix], name: layer[:name], enabled: layer[:enabled] }
+	else
+		coverage = coverages[layer[:feature_id]]
+		if coverage
 
-	namespace = namespaces[feature[:namespace_id]]
-	raise "no namespace #{feature[:namespace_id]} for feature #{layer[:name]}" unless feature
 
-	# puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
-	result << { prefix: namespace[:prefix], name: layer[:name], enabled: layer[:enabled] }
+		else
+
+			raise "no feature or coverage '#{layer[:feature_id]}' for layer '#{layer[:name]}'" unless feature
+		
+
+		end
+	end
+
+
+
 end
 #
 
