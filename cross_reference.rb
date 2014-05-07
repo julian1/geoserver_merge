@@ -57,19 +57,20 @@ Find.find(tmp_dir) do |path|
 	end
 end
 
-	# denormalize across lists
-	layers.each() do |layer_id,layer|
 
-		feature = features[layer[:feature_id]]
- 		raise "no feature for layer #{layer[:name]}" unless feature
+# denormalize layers
+layers.each() do |layer_id,layer|
 
-		namespace = namespaces[feature[:namespace_id]]
- 		raise "no namespace for feature #{layer[:name]}" unless feature
+	feature = features[layer[:feature_id]]
+	raise "no feature for layer #{layer[:name]}" unless feature
 
-		puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
+	namespace = namespaces[feature[:namespace_id]]
+	raise "no namespace for feature #{layer[:name]}" unless feature
+
+	puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
 
 # 		puts " feature #{feature.name}"
-	end
+end
 #
 
 
