@@ -10,7 +10,7 @@ tmp_dir="/home/meteo/imos/projects/geoserver-config/"
 
 layers = {} 
 features = {} 
-workspaces = {} 
+namespaces = {} 
 
 Find.find(tmp_dir) do |path|
 
@@ -43,53 +43,36 @@ Find.find(tmp_dir) do |path|
 	if feature_id 
  		name = xml.at_xpath("/featureType/name")
  		raise "feature missing name" unless name
- 		namespace = xml.at_xpath("/featureType/namespace/id")
- 		raise "feature missing namespace" unless namespace
+ 		namespace_id = xml.at_xpath("/featureType/namespace/id")
+ 		raise "feature missing namespace" unless namespace_id
 		# puts "feature #{feature_id.inner_html}, name #{name.inner_html}, namespace #{namespace.inner_html}"
-		features[feature_id.inner_html] = { name: name.inner_html, namespace: namespace.inner_html } 
+		features[feature_id.inner_html] = { name: name.inner_html, namespace_id: namespace_id.inner_html } 
 	end
 
-	# workspaces
-	workspace_id = xml.at_xpath("/workspace/id")
-	if workspace_id 
- 		name = xml.at_xpath("/workspace/name")
- 		raise "workspace missing name" unless name
-		# puts "workspace #{workspace_id.inner_html}, name #{name.inner_html}"
-		workspaces[workspace_id.inner_html] = { name: name.inner_html } 
+	# namespaces
+	namespace_id = xml.at_xpath("/namespace/id")
+	if namespace_id 
+ 		prefix = xml.at_xpath("/namespace/prefix")
+ 		raise "namespace missing prefix " unless prefix
+		# puts "namespace #{namespace_id.inner_html}, name #{name.inner_html}"
+		namespaces[namespace_id.inner_html] = { prefix: prefix.inner_html } 
 	end
-
-
-
-#<workspace>
-#  <id>
-# <featureType>
-#   <id>FeatureTypeInfoImpl-2d23ec69:126d477e611:-7e38</id>
-#   <name>installation_summary</name>
-#   <nativeName>installation_summary</nativeName>
-#   <namespace>
-#     <id>NamespaceInfoImpl-5f0a648d:1428d0d11a9:-7fff</id>
-# 
-
-#	//xpath_object = load_xml_file(path) #xml_file).at_xpath(path)
-# 	layer_name = Chef::Recipe::XMLHelper::get_xml_value(file, "layer/name")
-# 	if( layer_name)
-#         #next unless layer_name
-# 	end
-#	puts path 
-
-
 end
 
-	layers.each() do |key,val|
-		puts "layer #{key}, #{val}"
-	end
 
+# ok, denormalize the layer list ...
 
-	features.each() do |key,val|
-		puts "feature #{key}, #{val}"
-	end
-
-	workspaces.each() do |key,val|
-		puts "workspace #{key}, #{val}"
+# 
+# 	layers.each() do |key,val|
+# 		puts "layer #{key}, #{val}"
+# 	end
+# 
+# 
+# 	features.each() do |key,val|
+# 		puts "feature #{key}, #{val}"
+# 	end
+# 
+	namespaces.each() do |key,val|
+		puts "namespace #{key}, #{val}"
 	end
 
