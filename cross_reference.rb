@@ -83,21 +83,27 @@ layers.each() do |layer_id,layer|
 	# raise "no feature '#{layer[:feature_id]}' for layer '#{layer[:name]}'" unless feature
 	if feature
 		namespace = namespaces[feature[:namespace_id]]
-		raise "no namespace #{feature[:namespace_id]} for feature #{layer[:name]}" unless feature
+		raise "no namespace #{feature[:namespace_id]} for feature #{layer[:name]}" unless namespace
 
 		# puts "#{namespace[:prefix]} #{layer[:name]}  enabled #{layer[:enabled]}"
 		result << { prefix: namespace[:prefix], name: layer[:name], enabled: layer[:enabled] }
-	else
+
+	elsif coverages[layer[:feature_id]]
 		coverage = coverages[layer[:feature_id]]
-		if coverage
+
+		# puts "** coverage is #{coverage}" 
+
+		namespace = namespaces[coverage[:namespace_id]]
+		raise "no namespace #{coverage [:namespace_id]} for coverage #{layer[:name]}" unless namespace
 
 
-		else
+		result << { prefix: namespace[:prefix], name: layer[:name], enabled: layer[:enabled] }
 
-			raise "no feature or coverage '#{layer[:feature_id]}' for layer '#{layer[:name]}'" unless feature
+	else
+
+		raise "no feature or coverage '#{layer[:feature_id]}' for layer '#{layer[:name]}'" 
 		
 
-		end
 	end
 
 
