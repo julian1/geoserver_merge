@@ -18,6 +18,7 @@ Find.find(tmp_dir) do |path|
 	# decode to xml
 	xml = Nokogiri::XML(File.open(path))
 
+	layers = {} 
 
 	# layer objects
 	layer_id = xml.at_xpath("/layer/id")
